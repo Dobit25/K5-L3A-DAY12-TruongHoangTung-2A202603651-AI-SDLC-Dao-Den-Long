@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { DEFAULT_TUNING } from '../src/core/config.js';
 import { runHeadlessCli } from '../src/cli/headless.js';
-import os from 'node:os';
 
-describe('Test Contract v1.0 compliance', () => {
-  it('game.contract.json matches engine DEFAULT_TUNING exactly', () => {
+describe('Test Contract v1.1 compliance', () => {
+  it('game.contract.json matches engine DEFAULT_TUNING v1.1 exactly', () => {
     const contractPath = path.resolve(process.cwd(), 'game.contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
 
-    expect(contract.contract_version).toBe('1.0');
+    expect(contract.contract_version).toBe('1.1');
     expect(contract.team).toBe('2A202603651-TruongHoangTung');
     expect(contract.tuning).toEqual(DEFAULT_TUNING);
     expect(contract.tuning.lantern_count_night1).toBe(5);
+    expect(contract.tuning.lantern_cost).toBe(10);
+    expect(contract.tuning.dash_speed).toBe(14.0);
+    expect(contract.tuning.fall_enabled).toBe(true);
   });
 
-  it('returns exit code 1 on missing/invalid CLI flags', () => {
-    const code = runHeadlessCli(['--seed', '1', '--night', '1']);
-    expect(code).toBe(1);
+  it('returns exit code 1 on missing/invalid CLI flags and unsupported night', () => {
+    expect(runHeadlessCli(['--seed', '1', '--night', '1'])).toBe(1);
+    expect(runHeadlessCli(['--seed', '1', '--night', '4', '--ticks', '10', '--out', 'x.jsonl'])).toBe(1);
   });
 
   it('returns exit code 2 on malformed inputs JSON (non-increasing ticks)', () => {
@@ -74,4 +77,3 @@ describe('Test Contract v1.0 compliance', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });
-

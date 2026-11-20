@@ -8,8 +8,8 @@ const cliPath = path.resolve(process.cwd(), 'dist-cli/cli/headless.js');
 const winScenario = path.resolve(process.cwd(), 'tests/fixtures/phase1-win-scenario.json');
 const winInputs = path.resolve(process.cwd(), 'tests/fixtures/phase1-win-inputs.json');
 
-describe('Headless CLI end-to-end & determinism', () => {
-  it('runs win scenario via built CLI with valid JSONL order and exact score match', () => {
+describe('Headless CLI end-to-end & determinism (v1.1)', () => {
+  it('runs Night 1 win scenario via built CLI with valid JSONL v1.1 order and exact score match', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-e2e-'));
     const out1 = path.join(tmpDir, 'run1.jsonl');
     const out2 = path.join(tmpDir, 'run2.jsonl');
@@ -38,23 +38,26 @@ describe('Headless CLI end-to-end & determinism', () => {
 
     const text1 = fs.readFileSync(out1, 'utf8');
     const text2 = fs.readFileSync(out2, 'utf8');
-    // Strict byte-for-byte determinism check
     expect(text1).toBe(text2);
 
     const lines = text1.trim().split('\n').map((l) => JSON.parse(l));
-    // First line must be tick 0 snapshot
     expect(lines[0].type).toBe('snapshot');
     expect(lines[0].tick).toBe(0);
-    // Last line must be end
+    expect(lines[0].night).toBe(1);
+    expect(lines[0].wind).toEqual({ active: false, dir_deg: 0 });
+    expect(Array.isArray(lines[0].drifters)).toBe(true);
+    expect(Array.isArray(lines[0].charms)).toBe(true);
+
     const end = lines[lines.length - 1];
     expect(end.type).toBe('end');
     expect(end.state).toBe('won');
     expect(end.ticks).toBe(116);
+    // 10*10 (deposit) + 100 (lantern) + floor(118.067)*2 + 3*50 = 100 + 100 + 236 + 150 = 586
+    expect(end.score).toBe(586);
 
-    // Must contain 2 mote_picked, 1 deposit, 1 lantern_lit, 1 game_over (won, all_lit)
     const events = lines.filter((r) => r.type === 'event');
     expect(events.filter((e) => e.name === 'mote_picked')).toHaveLength(2);
-    expect(events.some((e) => e.name === 'deposit' && e.data.amount === 5)).toBe(true);
+    expect(events.some((e) => e.name === 'deposit' && e.data.amount === 10)).toBe(true);
     expect(events.some((e) => e.name === 'lantern_lit' && e.data.lantern_id === 'L1')).toBe(true);
     expect(
       events.some(
@@ -62,7 +65,6 @@ describe('Headless CLI end-to-end & determinism', () => {
       )
     ).toBe(true);
 
-    // Events in a tick must appear before snapshot of the same tick
     for (let i = 1; i < lines.length - 1; i++) {
       if (lines[i].type === 'event' && lines[i - 1].type === 'snapshot') {
         expect(lines[i].tick).toBeGreaterThan(lines[i - 1].tick);
@@ -72,24 +74,23 @@ describe('Headless CLI end-to-end & determinism', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('produces identical output across two runs with random_motes and random_shades enabled', () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-det-'));
-    const out1 = path.join(tmpDir, 'rand1.jsonl');
-    const out2 = path.join(tmpDir, 'rand2.jsonl');
-
-    execFileSync(
-      process.execPath,
-      [cliPath, '--seed', '777', '--night', '1', '--ticks', '600', '--snapshot-every', '60', '--out', out1],
-      { stdio: 'pipe' }
-    );
-    execFileSync(
-      process.execPath,
-      [cliPath, '--seed', '777', '--night', '1', '--ticks', '600', '--snapshot-every', '60', '--out', out2],
-      { stdio: 'pipe' }
-    );
-
-    expect(fs.readFileSync(out1, 'utf8')).toBe(fs.readFileSync(out2, 'utf8'));
+  it('produces byte-identical deterministic output across Nights 1, 2, and 3', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ddl-det-v11-'));
+    for (const night of ['1', '2', '3']) {
+      const out1 = path.join(tmpDir, `n${night}-a.jsonl`);
+      const out2 = path.join(tmpDir, `n${night}-b.jsonl`);
+      execFileSync(
+        process.execPath,
+        [cliPath, '--seed', '777', '--night', night, '--ticks', '600', '--snapshot-every', '60', '--out', out1],
+        { stdio: 'pipe' }
+      );
+      execFileSync(
+        process.execPath,
+        [cliPath, '--seed', '777', '--night', night, '--ticks', '600', '--snapshot-every', '60', '--out', out2],
+        { stdio: 'pipe' }
+      );
+      expect(fs.readFileSync(out1, 'utf8')).toBe(fs.readFileSync(out2, 'utf8'));
+    }
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });
-

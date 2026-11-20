@@ -15,7 +15,7 @@
 |---|---|---:|---:|---|
 | CP0 | Khảo sát repo, dựng harness, tài liệu nền, cài deps | ~6 | ~22k / ~7k | Đọc song song 6 file đề bài & tạo toàn bộ file CP0 theo lô |
 | Phase 1 | Triển khai PRD-0 + Test Contract v1.0, game 3D, audio, 17 tests, independent review & sửa lỗi | ~8 | ~45k / ~22k | Viết song song toàn bộ `src/core` trong 1 lượt; tách reviewer độc lập chỉ đọc file liên quan |
-| Phase 2 | *(Chờ triển khai)* | — | — | — |
+| Phase 2 | Chuẩn hóa Contract v1.1, 3 Đêm (Đảo Bến/Cau/Chuông), Dash/Fall/Drifter/Charm/Wind/Pause, UI 3 Đêm, 22 tests, benchmark 21.600 tick & independent review | ~7 | ~52k / ~28k | Viết song song toàn bộ `src/core` + `maps.ts` trong 1 lô; tận dụng lại cấu trúc Phase 1 |
 | Phase 3 | *(Chờ triển khai)* | — | — | — |
 | Phase 4 | *(Chờ triển khai)* | — | — | — |
 
@@ -40,3 +40,19 @@
   - Thêm kiểm tra tự động `game.contract.json === DEFAULT_TUNING` trong `tests/contract.test.ts`.
   - Gắn cổng kiểm tra SHA-256 determinism (`scripts/verify-phase1.mjs`) trực tiếp vào `npm run verify`.
   - Cập nhật `AGENTS.md` quy định dùng **integer tick counters** cho mọi cooldown/timer trong `src/core/` để lỗi trôi float không bao giờ tái diễn ở Phase 2–4.
+
+### Phase 2
+- **Đạt:** Toàn bộ Ticket-02 ("Ba hòn đảo", Contract v1.1) đạt 100%: `22/22` tests xanh (có scenario riêng cho từng tính năng mới), SHA-256 determinism cho cả 3 Đêm, chạy trọn Đêm 3 `21.600` tick trong **88 ms** (`<= 30.000 ms`), build web 3D sạch không lỗi.
+- **Các lỗi AI mắc phải & Cách phát hiện:**
+  1. **Air-dash gravity sớm 1 tick (`src/core/engine.ts`):** Ở tick thứ 12 của Dash, `dash_ticks` bị trừ về `0` trước đoạn tích phân trọng lực khiến trọng lực tác động sớm 1 tick. *Phát hiện nhờ:* tự rà soát logic bước 3 trước khi chạy test → tách cờ `dashingThisTick`.
+  2. **7 lỗi biên tinh tế phát hiện bởi Subagent `Phase 2 Independent Reviewer`:**
+     - Spawn Đêm 3 `[0,0,0]` bị chôn trong khối trụ tầng 2 (`r <= 8, Y=0..6`) → chuyển spawn Đêm 3 sang `[0, 0, -12]` (mặt đất tầng 0 thoáng).
+     - `drifter.pos[1]` đứng yên ở `Y=1.0` trên Đêm 3 khiến Gió Lạc cướp xuyên 5m độ cao và ngoài tầm 3D Pulse từ tầng 2 → cập nhật `drifter.pos[1] = groundY + 1.0` mỗi tick + kiểm tra `|dy| <= 2.0`.
+     - `enforceSafeZonesForShade` chạy ở cả Step 6 và Step 8 làm `eject_ticks` giảm gấp đôi (15 tick thay vì 30) → tách `stepSafeZoneEjection` chỉ chạy ở Step 6 và bỏ qua di chuyển thường khi đang eject.
+     - Nạp đèn (Step 5) thiếu kiểm tra `|dy|` khiến có thể nạp đèn `L1 (Y=6)` từ tầng 0 → thêm `|dy| <= 2.0`.
+     - Bóng Mực `recoil` chạy 59 tick (`1.967m`) thay vì 60 tick (`2.0m`) và không cập nhật `pos[1]` khi `recoil`/`wander` → thêm bộ đếm `recoil_ticks = 60` và cập nhật `getSupportY`.
+     - Dùng `localeCompare` khi sắp xếp ID có rủi ro lệch thứ tự giữa hệ điều hành → thay bằng hàm so sánh ASCII `cmpId`.
+     - `drifter_drop` phát trước `pulse` (ngược nhân quả) + bổ sung assert hồi bùa sau `2700` tick trong `tests/phase2-features.test.ts`.
+- **Điều chỉnh Harness sau Phase 2:**
+  - Nâng cấp `scripts/verify-phase2.mjs` kiểm tra SHA-256 determinism cho **cả 3 Đêm** + tự động fail-closed nếu benchmark `21.600` tick vượt `30s`.
+  - Cập nhật `AGENTS.md` và `.agents/skills/verify-phase/SKILL.md` cho quy trình hồi quy đa Đêm.

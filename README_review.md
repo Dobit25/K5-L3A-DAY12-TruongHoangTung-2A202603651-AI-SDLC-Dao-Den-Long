@@ -1,13 +1,13 @@
-# Đảo Đèn Lồng — Game 3D & Headless Engine
+# Đảo Đèn Lồng — Game 3D & Headless Engine (Contract v1.1)
 
 > **Video Demo (< 5 phút):** *(Sẽ đính kèm link Release `v1.0.0` / `docs/demo/demo.mp4` sau khi quay tại CP5)*
 > **Lưu ý file `_review`:** File này được đặt tên `README_review.md` để giữ nguyên tuyệt đối 6 file đề bài gốc (`README.md`, `GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`) cho tới khi tác giả duyệt chốt nộp.
 
 ## Giới thiệu
-**Đảo Đèn Lồng** là game 3D góc nhìn thứ ba: người chơi điều khiển **Mây** (đội nón lá treo chiếc đèn lồng nhỏ) chạy quanh **Đêm 1 — Đảo Bến**, thu thập **Đom Đóm** để thắp sáng **5 Đèn Lồng Lớn**, né **Bóng Mực** trong sương đen và dùng **Tỏa Sáng (Pulse)** để xua đuổi chúng.
+**Đảo Đèn Lồng** là game 3D góc nhìn thứ ba qua **3 Đêm (Đảo Bến · Đảo Cau · Đảo Chuông)**: người chơi điều khiển **Mây** (đội nón lá treo đèn lồng nhỏ) gom **Đom Đóm** để thắp sáng tất cả **Đèn Lồng Lớn**, né **Bóng Mực** và **Gió Lạc**, tận dụng **Lướt (Dash)**, **Bục nhảy**, **Bùa Gió** và **Tỏa Sáng (Pulse)** để đưa bình minh trở lại quần đảo.
 
 - **Tác giả:** TruongHoangTung — MSSV: `2A202603651` — Lớp: `K5-L3A`
-- **Công nghệ:** TypeScript, Vite, Three.js (đồ họa 3D procedural), Web Audio API (âm thanh tổng hợp), Node.js thuần (core engine & headless CLI), Vitest.
+- **Công nghệ:** TypeScript, Vite, Three.js (đồ họa 3D procedural chuẩn bảng màu), Web Audio API (âm thanh tổng hợp), Node.js thuần (core engine & headless CLI), Vitest.
 - **Giấy phép:** [MIT](LICENSE) | **Ghi nguồn:** [CREDITS.md](CREDITS.md)
 
 ---
@@ -27,53 +27,51 @@ Mở trình duyệt tại địa chỉ hiển thị (mặc định `http://local
 ## Điều khiển (Game 3D)
 | Phím / Thao tác | Hành động |
 |---|---|
-| `W / A / S / D` hoặc `↑ / ↓` | Di chuyển theo hướng camera |
-| `Space` | Nhảy |
-| `E` hoặc `Enter` | Nạp đom đóm vào Đèn Lồng Lớn gần nhất (`<= 2.5m`) |
-| `Q` hoặc `Shift` | Tỏa Sáng / Pulse (tốn `2` đom đóm, đẩy lùi & làm choáng Bóng Mực trong `8m`) |
-| Kéo chuột trái hoặc `← / →` | Xoay góc nhìn camera (`cam_yaw_deg`) |
+| `W / A / S / D` hoặc `↑ / ↓` | Di chuyển theo hướng camera (`6.0 m/s`, `7.2 m/s` khi có Bùa Gió) |
+| `Space` | Nhảy (`7.0 m/s`, chỉ nhảy khi chạm đất) |
+| `Shift` | Lướt / Dash (`14 m/s`, `0.2s`, giữ độ cao khi lướt trên không, hồi chiêu `1.5s`, không hồi chiêu khi có Bùa Gió) |
+| `E` hoặc `Enter` | Nạp đom đóm vào Đèn Lồng Lớn chưa sáng gần nhất (`<= 2.0m`, cần `10` đom đóm/đèn) |
+| `Q` | Tỏa Sáng / Pulse (tốn `3` đom đóm, bán kính 3D `5m` từ chân `+0.8m`, làm choáng `120` tick & đẩy lùi `4m`, hồi chiêu `3s`) |
+| `Esc` hoặc `P` | Tạm dừng / Mở menu tạm dừng |
+| Kéo chuột trái hoặc `← / →` | Xoay góc nhìn camera (`cam_yaw_deg`, chỉnh độ nhạy trong Cài đặt) |
 | `M` | Bật / tắt âm thanh tổng hợp |
-| `R` (hoặc nút **Chơi lại**) | Chơi lại sau khi thắng hoặc thua |
 
 ---
 
-## Chạy Kiểm chứng & Chế độ Headless (Test Contract v1.0)
-Chạy toàn bộ cổng kiểm chứng (typecheck + build CLI + unit tests + scenario CLI + kiểm tra tính tất định SHA-256 + build web) bằng **1 lệnh**:
+## Chạy Kiểm chứng & Chế độ Headless (Test Contract v1.1)
+Chạy toàn bộ cổng kiểm chứng (typecheck + build CLI + 22 tests + SHA-256 determinism cho 3 Đêm + benchmark 21.600 tick + build web) bằng **1 lệnh**:
 
 ```bash
 npm run verify
 ```
 
-Chạy trực tiếp chế độ headless theo [game.contract.json](game.contract.json):
+Chạy trực tiếp chế độ headless cho bất kỳ Đêm `1 | 2 | 3` theo [game.contract.json](game.contract.json):
 
 ```bash
-node dist-cli/cli/headless.js --seed 2026 --night 1 \
-  --scenario tests/fixtures/phase1-win-scenario.json \
-  --inputs tests/fixtures/phase1-win-inputs.json \
-  --ticks 300 --snapshot-every 20 --out out.jsonl
+node dist-cli/cli/headless.js --seed 2026 --night 3 --ticks 21600 --snapshot-every 600 --out out.jsonl
 ```
 
 ---
 
-## Quy tắc & Giả định Phase 1 (khớp `game.contract.json`)
-- **Nhặt đom đóm:** Tự động nhặt khi vào `pickup_radius = 1.8m` (mặt phẳng XZ, `<=`). Tối đa cầm `carry_capacity = 10`; khi đầy, đom đóm còn lại giữ nguyên trên mặt đất (không nhặt, không mất).
-- **Nạp đèn:** Kích hoạt bằng `interact` (`false -> true`) trong `interact_radius = 2.5m`, nạp `min(carried, 5 - deposited)` vào đèn chưa sáng gần nhất và giữ lại phần dư. Đủ `5` sẽ thắp đèn (`lantern_lit`).
-- **Tỏa Sáng (Pulse):** Trừ `pulse_cost = 2` từ `carried`, hồi chiêu `2.0s`. Thiếu đom đóm hoặc đang hồi chiêu sẽ không kích hoạt và không phát event `pulse`. Khi kích hoạt: làm choáng mọi Bóng Mực trong `8.0m` trong `3.0s` và đẩy lùi `6.0m`.
-- **Bị chạm & Rơi khỏi đảo:** Bị Bóng Mực không choáng chạm trong `1.4m` sẽ mất `1` ngọn lửa (tối đa `3`), rơi `Math.floor(carried * 0.5)` đom đóm (tan biến, không tạo lại mote trên đất), nhận miễn thương `1.5s`. `fall_enabled = false` nên không phạt rơi khỏi đảo và không phát `player_hit` loại `fall`.
-- **Vùng an toàn quanh đèn (`safe_radius = 6.0m`):** Áp dụng cho đèn đã thắp (`lit: true`). Bóng Mực đang trong vùng khi đèn vừa sáng bị đẩy ngay ra ngoài `6.05m` và không bao giờ đi vào lại vùng an toàn.
-- **Cách tính điểm:**
-  - Nhặt 1 đom đóm: `+10` (`per_mote`)
-  - Thắp 1 Đèn Lồng Lớn: `+200` (`per_lantern`)
-  - Làm choáng 1 Bóng Mực bằng Pulse: `+50` (`per_stun`)
-  - **Thưởng khi thắng** (cộng ngay tại tick `game_over` thắng, giúp `end.score` khớp snapshot cuối): `+5` mỗi giây còn lại (`Math.floor(time_left_s) * 5`) + `+100` mỗi ngọn lửa còn lại (`flames * 100`). Khi thua không cộng thưởng.
+## Số liệu chuẩn & Cách tính điểm (Ticket-02 / Contract v1.1)
+- **3 Đêm chuẩn hóa:**
+  - **Đêm 1 — Đảo Bến** (`300s`, R=40m, 5 đèn `L1..L5`, tối đa 6 Bóng Mực sinh mỗi 8s)
+  - **Đêm 2 — Đảo Cau** (`330s`, 2 đảo R=28m + cầu tre + 2 bục nhảy + 6 đèn `L1..L6`, Bùa Gió `C1`, Gió Lạc, tối đa 8 Bóng Mực sinh mỗi 7s)
+  - **Đêm 3 — Đảo Chuông** (`360s`, 3 tầng Y=0/3/6 + 2 dốc 30°/150° + bục nhảy lên tầng 2 + tháp chuông R=2 + 7 đèn `L1..L7`, Bùa Gió `C1/C2`, Gió Lạc, Gió mạnh 30s/5s đẩy `2 m/s`, tối đa 10 Bóng Mực `4.5 m/s` sinh mỗi 6s)
+- **Điểm số chuẩn hóa:**
+  - `+10` mỗi đom đóm nạp vào đèn (`deposit`)
+  - `+100` mỗi Đèn Lồng Lớn thắp sáng (`lantern_lit`)
+  - `+5` mỗi Bóng Mực trúng Tỏa Sáng (mỗi con mỗi lần, kể cả đang choáng)
+  - **Thưởng thắng Đêm:** `+ floor(giây còn lại) × 2 + 50 × Ngọn Lửa còn lại`
+  - **Tổng điểm chiến dịch:** tổng điểm của các Đêm đã thắng.
 
 ---
 
 ## Sáng tạo của tôi
-Tất cả phần sáng tạo dưới đây nằm hoàn toàn trong lớp hiển thị `src/render/` — **tách biệt tuyệt đối khỏi `src/core/` và không làm thay đổi bất kỳ byte nào của đầu ra headless**:
-1. **Không khí Đảo Bến nở sáng dần theo tiến độ đèn lồng:** Mây đội nón lá có chiếc đèn lồng mini tỏa sáng mạnh dần theo số đom đóm đang mang; biển mây trôi quanh bến gỗ và bầu trời sao; khi thắp mỗi Đèn Lồng Lớn, sương đêm (`FogExp2`) lùi dần, ánh sáng môi trường chuyển ấm từ xanh đêm sang vàng cam cổ tích, vòng an toàn `safe_radius` hiện ánh sáng dịu trên mặt đất, và sóng ánh sáng 3D bung ra khi dùng Pulse.
-2. **Âm thanh tổng hợp thời gian thực (Web Audio API):** Chuông gió ngũ cung tăng cao độ theo số đom đóm nhặt được, hợp âm ấm khi nạp/thắp đèn, sóng cộng hưởng khi Pulse, âm trầm cảnh báo khi bị chạm (có nút `M` tắt/mở, 0 file audio ngoài).
-- **Bằng chứng không phá phần lõi:** `src/core/` không có bất kỳ import nào từ `src/render/` hay `three`; bộ kiểm chứng `npm run verify` chạy 100% qua Node.js thuần và xác nhận đầu ra headless trùng khớp SHA-256 tuyệt đối (xem `docs/proof/phase-1/verification-report.md`).
+Tất cả phần sáng tạo nằm hoàn toàn trong `src/render/` — **tách biệt tuyệt đối khỏi `src/core/` và không làm thay đổi bất kỳ byte nào của đầu ra headless**:
+1. **Không khí Ba Hòn Đảo sống động chuẩn bảng màu cổ tích:** Mây đội nón lá treo chiếc đèn lồng mini tỏa sáng dần theo số đom đóm đang cầm; bầu trời sao + biển mây trôi quanh bến gỗ/cầu tre/tháp chuông; vòng an toàn `safe_radius` 6m hiện dịu quanh đèn đã thắp; lá bay báo hiệu gió mạnh ở Đêm 3; sóng ánh sáng 3D bung ra khi Tỏa Sáng; ánh sáng môi trường tăng tuyến tính đúng công thức `0.15 + 0.55 × (lit / total)`.
+2. **Âm thanh tổng hợp thời gian thực (Web Audio API):** Nhạc nền gió đêm êm dịu + hiệu ứng riêng cho nhặt đom đóm (ngũ cung), nhảy, lướt, Bùa Gió, nạp đèn, thắp đèn, Tỏa Sáng, bị đánh, Bóng Mực xuất hiện, Gió Lạc, cảnh báo gió mạnh, đếm ngược 10 giây cuối và thắng/thua (0 file audio ngoài, chỉnh âm lượng lưu giữa các phiên).
+- **Bằng chứng không phá phần lõi:** `src/core/` không có import Three.js/DOM; `npm run verify` chạy 100% Node.js thuần xác nhận 22/22 test xanh, SHA-256 determinism cho cả 3 Đêm và chạy trọn Đêm 3 (`21.600` tick) chỉ mất `~143ms` (`<= 30.000ms`) — xem `docs/proof/phase-2/verification-report.md`.
 
 ---
 
@@ -82,4 +80,4 @@ Tất cả phần sáng tạo dưới đây nằm hoàn toàn trong lớp hiển
 - Giả định & tiêu chí nghiệm thu: [docs/notes/assumptions.md](docs/notes/assumptions.md)
 - Nhật ký AI, phân tích lỗi & token: [docs/notes/ai-log.md](docs/notes/ai-log.md)
 - Retro dự án: [docs/notes/retro.md](docs/notes/retro.md)
-- Bằng chứng từng phase: `docs/proof/`
+- Bằng chứng từng phase: `docs/proof/phase-1/`, `docs/proof/phase-2/`

@@ -34,3 +34,4 @@
 ## Original Lab Files Integrity Check
 - 6 file gốc (`README.md`, `GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`): **0 thay đổi** (xác nhận qua `git status` và `scripts/verify-phase1.mjs`).
 - Bản README sản phẩm lưu tại `README_review.md` chờ tác giả duyệt chốt tên.
+

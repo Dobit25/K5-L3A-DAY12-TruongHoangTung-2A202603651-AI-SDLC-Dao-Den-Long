@@ -47,8 +47,26 @@
 
 ---
 
-## Phase 2 (Ticket-02)
-*(Chờ nội dung Ticket-02 từ Lab board)*
+## Phase 2 (Ticket-02 — "Ba hòn đảo" — Contract v1.1)
+
+### A. Thay đổi từ Phase 1 → Phase 2 (chuẩn hóa số liệu)
+- `lantern_cost`: `5 -> 10`; `pickup_radius`: `1.8 -> 1.0` (thêm `|dy| <= 1.5`); `interact_radius`: `2.5 -> 2.0`.
+- `pulse`: `cost 2 -> 3`, `radius 8 -> 5` (3D từ chân Mây `+0.8m`), `stun 180 -> 120` tick, `push 6m -> 4m` trong 15 tick đầu, `cooldown 120 -> 180` tick.
+- `shade`: tốc độ `3.5 -> 4.0 m/s` (Đêm 3: `4.5`), `hit_radius 1.4 -> 1.0` (`|dy| <= 1.5`), recoil `2m / 60` tick, phát hiện `12m` / bỏ đuổi `18m`, sinh theo lịch (2 con @ tick 300 rồi mỗi 480/420/360 tick, tối đa 6/8/10), tên trạng thái chuẩn `spawning | wander | chase | recoil | stunned`.
+- `fall_enabled`: `false -> true` (`Y < -10`, bỏ qua bất tử, mất toàn bộ đom đóm, chờ 60 tick hồi sinh với 90 tick bất tử).
+- **Tính điểm chuẩn hóa:** `+10` mỗi đom đóm **nạp** (thay vì lúc nhặt ở Phase 1), `+100` đèn thắp, `+5` mỗi Bóng Mực trúng Pulse (kể cả đang choáng), thưởng thắng `floor(time_left_s) * 2 + 50 * flames`.
+- **Cập nhật test Phase 1 có ghi lý do:** `tests/engine.test.ts`, `tests/contract.test.ts`, `tests/scenarios.test.ts` được cập nhật theo số liệu chuẩn v1.1 (ghi rõ lý do ở đầu file `tests/engine.test.ts`).
+
+### B. Acceptance Criteria cho từng mục Phần 3 (Ticket-02 DoD)
+- **AC-2.1 (Lướt / Dash):** `14 m/s`, `12` tick, giữ độ cao khi lướt trên không, hồi chiêu `90` tick từ lúc bắt đầu, phát event `dash` (`tests/phase2-features.test.ts`).
+- **AC-2.2 (Rơi khỏi đảo):** Khi `Y < -10` kích hoạt 1 lần kể cả đang bất tử, trừ 1 Ngọn Lửa, mất hết đom đóm, phát `player_hit {by:"fall", lost}`, chờ 60 tick hồi sinh tại `(0,0,0)` với 90 tick bất tử (`tests/phase2-features.test.ts`).
+- **AC-2.3 (Đêm 2 — Đảo Cau):** 2 đảo R=28 tâm `(0,0)` và `(70,0)`, cầu tre `[26,44]x[-2,2]`, 6 đèn `L1..L6`, 2 bục nhảy `(20,0,18)` & `(50,0,-18)` phóng sang đảo kia trong ~1.4s (`tests/phase2-features.test.ts`).
+- **AC-2.4 (Đêm 3 — Đảo Chuông):** 3 tầng `Y=0/3/6`, 2 dốc `30°`/`150°`, bục nhảy `(0,3,13)` lên tầng 2, tháp chuông cản trụ R=2, 7 đèn `L1..L7`, gió mạnh mỗi 30s kéo dài 5s đẩy `2 m/s` (`tests/phase2-features.test.ts`).
+- **AC-2.5 (Gió Lạc / Drifter):** Đêm 2 & 3, sinh ở tick 1200/2400 tối đa 2 con; `idle` (2 m/s) → `chase` (7 m/s khi `carried >= 5` & `<= 15m`) → `drifter_steal` tối đa 3 đom đóm (bỏ qua bất tử & vùng an toàn) → `flee` 240 tick; trúng Pulse lúc `flee` thì phát `drifter_drop` rơi đom đóm ra đất (`tests/phase2-features.test.ts`).
+- **AC-2.6 (Bùa Gió / Charm):** Đêm 2 `(35,0,0)`, Đêm 3 `(±30,0,25)`; nhặt phát `charm_picked` hiệu lực 600 tick (`7.2 m/s`, Lướt không hồi chiêu), hồi lại sau 2700 tick (`tests/phase2-features.test.ts`).
+- **AC-2.7 (Tạm dừng / Pause):** `pause: true` phát `paused`, đứng yên `sim_tick`, thời gian và mọi bộ đếm; snapshot ghi `state: "paused"`; `pause` lại phát `resumed` (`tests/phase2-features.test.ts`).
+- **AC-2.8 (Chuỗi 3 Đêm, Cài đặt, Âm thanh, HUD, Bảng màu chuẩn):** Menu chính → giới thiệu Đêm (lời Ông Đăng) → chơi → kết quả → Đêm kế / Bình Minh; cài đặt âm lượng & độ nhạy chuột lưu `localStorage`; đầy đủ SFX + nhạc nền đêm + đếm ngược 10s cuối; HUD đủ 10 ô đom đóm, hồi chiêu Lướt/Tỏa Sáng, nhắc nạp `E`, mũi tên chỉ đèn ngoài màn hình; bảng màu chuẩn `PALETTE` và ánh sáng môi trường `0.15 + 0.55 * (lit/total)` (`src/render/game3d.ts`, `src/render/audio.ts`).
+- **AC-2.9 (Hiệu năng headless):** Chạy trọn Đêm 3 (`21.600` tick) hoàn tất trong `<= 30 giây` (`scripts/verify-phase2.mjs`).
 
 ---
 

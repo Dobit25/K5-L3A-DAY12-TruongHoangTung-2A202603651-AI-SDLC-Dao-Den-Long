@@ -13,8 +13,9 @@ Use this skill before tagging any `phase-N` commit.
 
 ## Steps
 1. Run `npm run verify` inside the `gen` conda environment (or standard Node.js on macOS/Linux).
-2. Confirm headless determinism by executing at least one canonical scenario twice and asserting byte-for-byte identical output.
-3. Verify no forbidden edits touched the 6 original lab files (`README.md`, `GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`).
-4. Verify no secrets (`.env`, API keys, tokens) are staged or tracked in git.
-5. Capture summary output and requirement traceability matrix into `docs/proof/phase-N/verification-report.md`.
-6. Invoke an independent reviewer (separate from the coding pass) to audit requirement coverage, edge cases, and regression against earlier phases before final commit/tag.
+2. Confirm headless determinism across all active Nights (`--night 1`, `2`, `3`) by executing each twice and asserting SHA-256 byte-for-byte identical output.
+3. Confirm full-night headless performance benchmark (`21,600` ticks completes within `<= 30s`).
+4. Verify no forbidden edits touched the 6 original lab files (`README.md`, `GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`).
+5. Verify no secrets (`.env`, API keys, tokens) are staged or tracked in git.
+6. Capture summary output and requirement traceability matrix into `docs/proof/phase-N/verification-report.md`.
+7. Invoke an independent reviewer (separate from the coding pass) to audit requirement coverage, edge cases, and regression against earlier phases before final commit/tag.

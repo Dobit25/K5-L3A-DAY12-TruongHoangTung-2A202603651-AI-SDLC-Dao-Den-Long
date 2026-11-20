@@ -6,10 +6,10 @@
   "shades": [{ "id": "S1", "pos": [0, 0, 26], "state": "wander" }],
   "lanterns": [
     { "id": "L1", "pos": [0, 0, 12], "deposited": 0, "lit": false },
-    { "id": "L2", "lit": true },
-    { "id": "L3", "lit": true },
-    { "id": "L4", "lit": true },
-    { "id": "L5", "lit": true }
+    { "id": "L2", "lit": true, "fuel": 80 },
+    { "id": "L3", "lit": true, "fuel": 80 },
+    { "id": "L4", "lit": false },
+    { "id": "L5", "lit": false }
   ],
-  "time_left_s": 120
+  "time_left_s": 2
 }

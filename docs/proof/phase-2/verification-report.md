@@ -34,3 +34,4 @@
 - [night2-run1.jsonl](night2-run1.jsonl) — 1,800 ticks Đêm 2 (`sha256=f9f6be2a13f9470b...`, `108ms`)
 - [night3-run1.jsonl](night3-run1.jsonl) — 1,800 ticks Đêm 3 (`sha256=f6a228a0bb73faac...`, `92ms`)
 - [night3-full-21600.jsonl](night3-full-21600.jsonl) — 21,600 ticks trọn Đêm 3 (`88ms <= 30,000ms`)
+

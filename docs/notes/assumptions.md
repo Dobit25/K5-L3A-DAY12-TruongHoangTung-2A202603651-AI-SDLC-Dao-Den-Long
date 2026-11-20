@@ -70,8 +70,21 @@
 
 ---
 
-## Phase 3 (Ticket-03)
-*(Chờ nội dung Ticket-03 từ Lab board)*
+## Phase 3 (Ticket-03 — Change Request "Đèn cạn dầu" — Contract v1.2)
+- Xem chi tiết quyết định thiết kế & thay đổi phá vỡ tương thích tại [ADR-001](adr-001-lantern-fuel-and-dawn-survival.md) và [CHANGELOG.md](../../CHANGELOG.md).
+- **Quyết định kỹ thuật chính:**
+  - Lưu nhiên liệu đèn bằng **số nguyên theo đơn vị `1/60`** (`fuel_60ths ∈ [0, 6000]`) để tránh sai số dấu phẩy động suốt Đêm; xuất snapshot `round1(fuel_60ths / 60)` (đèn tắt = `0`).
+  - Vùng an toàn 6m chỉ có hiệu lực khi `lit && fuel_60ths >= 1800` (`>= 30.0`).
+  - Luật thắng thay thế hoàn toàn `all_lit` bằng `dawn_survived` tại tick bình minh (`240/270/300s`, cần `>= ceil(0.6 * total)` đèn đang sáng).
+  - Các test cũ bị luật mới thay thế (`tests/contract.test.ts`, `tests/engine.test.ts`, `tests/scenarios.test.ts`) đều đã được cập nhật có ghi rõ lý do ở đầu file (không tắt/skip âm thầm).
+
+### Acceptance Criteria Phase 3
+- **AC-3.1:** Đèn sáng hao đúng `1/60` mỗi tick, về `0` phát `lantern_out`, đặt `ever_lit: true`; thắp lại chỉ cần `5` đom đóm (`+40đ`, `relight: true`, `relit_count++`) (`tests/phase3-fuel.test.ts`).
+- **AC-3.2:** Châm dầu đèn sáng dùng `ceil((100 - fuel)/10)` đom đóm, bỏ qua đèn đã đầy dầu; châm từ `< 30` lên `>= 30` đẩy Bóng Mực ra mép 6m trong `<= 30` tick không gây sát thương (`tests/phase3-fuel.test.ts`).
+- **AC-3.3:** Bóng Mực `wander` chọn đèn yếu (`< 30`) gần nhất, vào `<= 2m` chuyển `drain` hút `5/60` mỗi tick, phát `fuel_drain` mỗi 60 tick; trúng Pulse lúc `drain` thưởng tổng `+15đ` (`tests/phase3-fuel.test.ts`).
+- **AC-3.4:** Không thắng sớm khi thắp đủ đèn; bình minh sống sót với `>= 60%` đèn sáng phát `dawn_survived` + điểm thưởng đèn & lửa (không thưởng thời gian); thiếu đèn thua `dawn`; hết lửa thua `no_flames` (`tests/phase3-fuel.test.ts`, `tests/scenarios.test.ts`).
+- **AC-3.5:** Sức chứa tăng `10 + 2 * successful_lights` tối đa `20`, hiển thị `carried/capacity` trên HUD (`tests/phase3-fuel.test.ts`, `src/render/game3d.ts`).
+- **AC-3.6:** Chế độ mù màu lưu cài đặt đổi viền/mắt Bóng Mực sang `#00B3FF`, cảnh báo UI sang `#FFFFFF` kèm `⚠`, đèn tắt xẹp 20% + vết rách, thanh dầu + nhấp nháy `1 Hz` khi `< 30` (`src/render/game3d.ts`).
 
 ---
 

@@ -5,18 +5,21 @@ import path from 'node:path';
 import { DEFAULT_TUNING } from '../src/core/config.js';
 import { runHeadlessCli } from '../src/cli/headless.js';
 
-describe('Test Contract v1.1 compliance', () => {
-  it('game.contract.json matches engine DEFAULT_TUNING v1.1 exactly', () => {
+describe('Test Contract v1.2 compliance', () => {
+  it('game.contract.json matches engine DEFAULT_TUNING v1.2 exactly', () => {
     const contractPath = path.resolve(process.cwd(), 'game.contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
 
-    expect(contract.contract_version).toBe('1.1');
+    expect(contract.contract_version).toBe('1.2');
     expect(contract.team).toBe('2A202603651-TruongHoangTung');
     expect(contract.tuning).toEqual(DEFAULT_TUNING);
-    expect(contract.tuning.lantern_count_night1).toBe(5);
-    expect(contract.tuning.lantern_cost).toBe(10);
-    expect(contract.tuning.dash_speed).toBe(14.0);
-    expect(contract.tuning.fall_enabled).toBe(true);
+    expect(contract.tuning.fuel_max).toBe(100);
+    expect(contract.tuning.relight_cost).toBe(5);
+    expect(contract.tuning.win_ratio).toBe(0.6);
+    expect(contract.tuning.capacity_max).toBe(20);
+    expect(contract.tuning.night1_duration_s).toBe(240);
+    expect(contract.tuning.night2_duration_s).toBe(270);
+    expect(contract.tuning.night3_duration_s).toBe(300);
   });
 
   it('returns exit code 1 on missing/invalid CLI flags and unsupported night', () => {

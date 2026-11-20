@@ -18,7 +18,7 @@
 - Dev server (3D game): `npm run dev`
 - Build static release & headless CLI: `npm run build`
 - Run headless CLI: `node dist-cli/cli/headless.js --seed <int> --night <1|2|3> --ticks <int> --out <file.jsonl>`
-- Run full verification gate: `npm run verify` *(typecheck + build:cli + vitest + Phase 2 multi-night SHA-256 determinism & 21,600-tick speed benchmark + build:web)*
+- Run full verification gate: `npm run verify` *(typecheck + build:cli + vitest + Phase 3 Contract v1.2 multi-night SHA-256 determinism & full-night benchmark + build:web)*
 - Note (Windows PowerShell 5.1): chain commands with `;` rather than `&&`.
 
 ## Phase Workflow Checklist
@@ -33,4 +33,5 @@
 - **CP0:** Initialized `AGENTS.md`, `verify-phase` skill, CI workflow, and project guardrails.
 - **Phase 1:** Enforced `game.contract.json` ↔ `DEFAULT_TUNING` deep-equality test (`tests/contract.test.ts`), added automated SHA-256 determinism gate (`scripts/verify-phase1.mjs`) into `npm run verify`, added integer-tick-timer rule after independent review caught IEEE-754 float drift, and added PowerShell `;` separator note.
 - **Phase 2:** Upgraded contract & verification gate to Test Contract v1.1 (`scripts/verify-phase2.mjs`) covering Nights 1–3 SHA-256 determinism + 21,600-tick `< 30s` performance benchmark, added per-feature headless scenarios (`tests/phase2-features.test.ts`), and updated `.agents/skills/verify-phase/SKILL.md` for multi-night regression.
+- **Phase 3:** Migrated to Contract v1.2 (`scripts/verify-phase3.mjs`, `tests/phase3-fuel.test.ts`), extended integer-unit rule to lantern fuel (`fuel_60ths` 1/60th integer scale), added `ADR-001` and `CHANGELOG.md` breaking-changes documentation, and updated affected tests with explicit documented reasons (zero silently skipped tests).
 

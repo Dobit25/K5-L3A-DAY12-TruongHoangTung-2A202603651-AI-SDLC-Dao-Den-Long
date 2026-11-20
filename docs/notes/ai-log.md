@@ -16,7 +16,7 @@
 | CP0 | Khảo sát repo, dựng harness, tài liệu nền, cài deps | ~6 | ~22k / ~7k | Đọc song song 6 file đề bài & tạo toàn bộ file CP0 theo lô |
 | Phase 1 | Triển khai PRD-0 + Test Contract v1.0, game 3D, audio, 17 tests, independent review & sửa lỗi | ~8 | ~45k / ~22k | Viết song song toàn bộ `src/core` trong 1 lượt; tách reviewer độc lập chỉ đọc file liên quan |
 | Phase 2 | Chuẩn hóa Contract v1.1, 3 Đêm (Đảo Bến/Cau/Chuông), Dash/Fall/Drifter/Charm/Wind/Pause, UI 3 Đêm, 22 tests, benchmark 21.600 tick & independent review | ~7 | ~52k / ~28k | Viết song song toàn bộ `src/core` + `maps.ts` trong 1 lô; tận dụng lại cấu trúc Phase 1 |
-| Phase 3 | *(Chờ triển khai)* | — | — | — |
+| Phase 3 | Change Request Contract v1.2 (nhiên liệu đèn `1/60`, `drain`, `dawn_survived`, sức chứa tăng dần, mù màu, ADR-001, CHANGELOG, 30 tests & independent review) | ~6 | ~48k / ~24k | Cập nhật cục bộ `engine.ts` + `game3d.ts` nhờ tách lõi sạch từ CP0 |
 | Phase 4 | *(Chờ triển khai)* | — | — | — |
 
 ---
@@ -56,3 +56,13 @@
 - **Điều chỉnh Harness sau Phase 2:**
   - Nâng cấp `scripts/verify-phase2.mjs` kiểm tra SHA-256 determinism cho **cả 3 Đêm** + tự động fail-closed nếu benchmark `21.600` tick vượt `30s`.
   - Cập nhật `AGENTS.md` và `.agents/skills/verify-phase/SKILL.md` cho quy trình hồi quy đa Đêm.
+
+### Phase 3
+- **Đạt:** Hoàn tất Change Request "Đèn cạn dầu" (Contract v1.2) với `30/30` tests xanh (0 test bị skip âm thầm), SHA-256 determinism cả 3 Đêm, trọn Đêm 3 `18.000` tick trong `415 ms`, đầy đủ `ADR-001` và `CHANGELOG.md`.
+- **Các lỗi AI mắc phải & Cách phát hiện (Subagent `Phase 3 Independent Reviewer`):**
+  1. **Trạng thái `drain` cũ sót sang Step 7 đúng tick đèn tắt (`src/core/engine.ts`):** Khi đèn cạn dầu phát `lantern_out` ở Step 2, Bóng Mực đang hút vẫn giữ `state = 'drain'` tới Step 8 khiến Pulse ở Step 7 cộng nhầm `+15đ` thay vì `+5đ`. *Khắc phục:* giải phóng ngay `drain -> wander` bên trong vòng `lantern_out` ở Step 2 và thêm test hồi quy kiểm tra đúng tick đèn tắt.
+  2. **Thanh dầu 3D lệch góc khi xoay camera (`src/render/game3d.ts`):** `fuelBarFill` là mesh anh em của `fuelBarBg` và dịch theo trục X thế giới nên bị tách khỏi nền khi xoay camera. *Khắc phục:* gắn `fuelBarFill` làm con của `fuelBarBg` theo tọa độ cục bộ.
+  3. **Test yếu ở `tests/phase3-fuel.test.ts` + thiếu 4 ca biên:** Test ban đầu chưa kiểm tra biên `fuel === 30.0`, 2 bóng hút dồn `11/60`, ưu tiên `no_flames` trên tick bình minh, và nhặt vượt 10 đom đóm khi `capacity = 12`. *Khắc phục:* thay thế bằng 4 test biên thật chạy đủ assertion.
+  4. **Chuỗi UI sót từ Phase 2 & màu `#FF5A5F` hardcode:** Cập nhật lời giới thiệu Đêm, màn hình kết quả `dawn_survived`/`dawn` và áp dụng bảng màu mù màu `#FFFFFF + ⚠` đồng nhất trên toàn bộ modal.
+- **Điều chỉnh Harness sau Phase 3:**
+  - Mở rộng quy tắc số nguyên trong `AGENTS.md` sang cả đơn vị nhiên liệu (`fuel_60ths`) và nâng cấp cổng `scripts/verify-phase3.mjs` cho Contract v1.2.

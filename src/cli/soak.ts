@@ -83,19 +83,18 @@ function tryGc(): void {
 }
 
 export function runSoak(seed: number, nights: number): SoakReport {
-  // Warm up V8 JIT and SemiSpace/OldSpace across a full Night 1 (14,400 ticks) + Night 3 (3,600 ticks)
-  // before measuring Night 1 RSS so Linux glibc/V8 committed pages reach steady state.
-  for (const [warmNight, warmTicks] of [
-    [1, 14400],
-    [3, 3600],
-  ] as const) {
-    const warm = new GameEngine(seed + warmNight, warmNight);
+  // Warm up V8 JIT and heap across Night 1 + Night 2 + Night 3 so V8 SemiSpace/OldSpace
+  // reaches its steady-state working set before Night 1 RSS (mem_start_mb) is sampled.
+  for (const warmNight of [1, 2, 3] as const) {
+    const warm = new GameEngine(seed + 100 + warmNight, warmNight);
     const warmRng = new DeterministicRng(((seed + warmNight) ^ 0x517cc1b7) | 0);
+    const warmTicks = warm.map.durationS * TICK_RATE + 10;
     const warmIn = createDefaultInput();
     for (let w = 0; w < warmTicks && warm.state === 'playing'; w++) {
       if (w % 30 === 0) {
         const a = warmRng.range(0, Math.PI * 2);
-        warmIn.move = [Math.cos(a), Math.sin(a)];
+        warmIn.move[0] = Math.cos(a);
+        warmIn.move[1] = Math.sin(a);
       }
       warmIn.jump = warmRng.next() < 0.05;
       warmIn.dash = warmRng.next() < 0.03;
@@ -104,8 +103,6 @@ export function runSoak(seed: number, nights: number): SoakReport {
       warm.step(warmIn);
     }
   }
-  tryGc();
-  tryGc();
 
   const t0 = performance.now();
   const results: Array<'won' | 'lost'> = [];
@@ -127,7 +124,8 @@ export function runSoak(seed: number, nights: number): SoakReport {
       for (let k = 0; k < maxTicks && engine.state === 'playing'; k++) {
         if (k % 30 === 0) {
           const angle = inputRng.range(0, Math.PI * 2);
-          input.move = [Math.cos(angle), Math.sin(angle)];
+          input.move[0] = Math.cos(angle);
+          input.move[1] = Math.sin(angle);
         }
         input.jump = inputRng.next() < 0.05;
         input.dash = inputRng.next() < 0.03;
@@ -138,13 +136,13 @@ export function runSoak(seed: number, nights: number): SoakReport {
 
       results.push(engine.state === 'won' ? 'won' : 'lost');
       engine = null;
-      tryGc();
     } catch {
       crashes += 1;
       results.push('lost');
     }
   }
 
+  tryGc();
   tryGc();
   const memEndMb = rssMb();
   const durationS = round1((performance.now() - t0) / 1000);

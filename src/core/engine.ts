@@ -790,15 +790,14 @@ export class GameEngine {
     const pulseTriggered = !this.prevInput.pulse && input.pulse;
     const dashTriggered = !this.prevInput.dash && input.dash;
 
-    this.prevInput = {
-      move: [input.move[0], input.move[1]],
-      cam_yaw_deg: input.cam_yaw_deg,
-      jump: input.jump,
-      interact: input.interact,
-      pulse: input.pulse,
-      dash: input.dash,
-      pause: input.pause,
-    };
+    this.prevInput.move[0] = input.move[0];
+    this.prevInput.move[1] = input.move[1];
+    this.prevInput.cam_yaw_deg = input.cam_yaw_deg;
+    this.prevInput.jump = input.jump;
+    this.prevInput.interact = input.interact;
+    this.prevInput.pulse = input.pulse;
+    this.prevInput.dash = input.dash;
+    this.prevInput.pause = input.pause;
 
     if (pauseTriggered) {
       if (this.status === 'playing') {
@@ -986,7 +985,8 @@ export class GameEngine {
       const wz = -mx * sinT + mz * cosT;
       const wLen = Math.hypot(wx, wz);
       if (wLen > 1e-6) {
-        this.player.facing = [wx / wLen, wz / wLen];
+        this.player.facing[0] = wx / wLen;
+        this.player.facing[1] = wz / wLen;
       }
 
       const canDash =

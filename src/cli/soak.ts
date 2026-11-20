@@ -83,13 +83,16 @@ function tryGc(): void {
 }
 
 export function runSoak(seed: number, nights: number): SoakReport {
-  // Warm up V8 JIT across all simulation code paths (spawns, drifters, wind, actions)
-  // before measuring Night 1 RSS so one-time JIT codegen pages do not skew steady-state RSS.
-  {
-    const warm = new GameEngine(seed, 3);
-    const warmRng = new DeterministicRng((seed ^ 0x517cc1b7) | 0);
+  // Warm up V8 JIT and SemiSpace/OldSpace across a full Night 1 (14,400 ticks) + Night 3 (3,600 ticks)
+  // before measuring Night 1 RSS so Linux glibc/V8 committed pages reach steady state.
+  for (const [warmNight, warmTicks] of [
+    [1, 14400],
+    [3, 3600],
+  ] as const) {
+    const warm = new GameEngine(seed + warmNight, warmNight);
+    const warmRng = new DeterministicRng(((seed + warmNight) ^ 0x517cc1b7) | 0);
     const warmIn = createDefaultInput();
-    for (let w = 0; w < 2000 && warm.state === 'playing'; w++) {
+    for (let w = 0; w < warmTicks && warm.state === 'playing'; w++) {
       if (w % 30 === 0) {
         const a = warmRng.range(0, Math.PI * 2);
         warmIn.move = [Math.cos(a), Math.sin(a)];
@@ -101,6 +104,7 @@ export function runSoak(seed: number, nights: number): SoakReport {
       warm.step(warmIn);
     }
   }
+  tryGc();
   tryGc();
 
   const t0 = performance.now();

@@ -1119,21 +1119,37 @@ export class GameEngine {
     // ─── STEP 4: Pickup motes and charms (respecting dynamic playerCapacity) ───
     if (this.player.respawn_ticks === 0 && this.player.flames > 0) {
       const cap = this.playerCapacity;
-      const remainingMotes: MoteState[] = [];
-      for (const mote of this.motes) {
-        if (
-          mote.pickup_delay_ticks === 0 &&
-          this.player.carried < cap &&
-          distXZ(this.player.pos, mote.pos) <= this.tuning.pickup_radius &&
-          Math.abs(this.player.pos[1] - mote.pos[1]) <= PICKUP_MAX_DY
-        ) {
-          this.player.carried += 1;
-          events.push(this.makeEvent(nextTick, 'mote_picked', { carried: this.player.carried }));
-        } else {
-          remainingMotes.push(mote);
+      if (this.player.carried < cap) {
+        let canPickAnyMote = false;
+        for (let i = 0; i < this.motes.length; i++) {
+          const mote = this.motes[i];
+          if (
+            mote.pickup_delay_ticks === 0 &&
+            distXZ(this.player.pos, mote.pos) <= this.tuning.pickup_radius &&
+            Math.abs(this.player.pos[1] - mote.pos[1]) <= PICKUP_MAX_DY
+          ) {
+            canPickAnyMote = true;
+            break;
+          }
+        }
+        if (canPickAnyMote) {
+          const remainingMotes: MoteState[] = [];
+          for (const mote of this.motes) {
+            if (
+              mote.pickup_delay_ticks === 0 &&
+              this.player.carried < cap &&
+              distXZ(this.player.pos, mote.pos) <= this.tuning.pickup_radius &&
+              Math.abs(this.player.pos[1] - mote.pos[1]) <= PICKUP_MAX_DY
+            ) {
+              this.player.carried += 1;
+              events.push(this.makeEvent(nextTick, 'mote_picked', { carried: this.player.carried }));
+            } else {
+              remainingMotes.push(mote);
+            }
+          }
+          this.motes = remainingMotes;
         }
       }
-      this.motes = remainingMotes;
 
       for (const charm of this.charms) {
         if (
@@ -1522,41 +1538,62 @@ export class GameEngine {
 
     // ─── STEP 9: Collisions — Drifters steal FIRST, then Shades hit (id ascending) ───
     if (this.player.respawn_ticks === 0 && this.player.flames > 0) {
-      const sortedDrifters = [...this.drifters]
-        .filter((d) => d.state === 'chase' && !d.has_stolen)
-        .sort((a, b) => cmpId(a.id, b.id));
-      for (const drifter of sortedDrifters) {
+      let hasStealingDrifter = false;
+      for (let i = 0; i < this.drifters.length; i++) {
+        const d = this.drifters[i];
         if (
-          distXZ(this.player.pos, drifter.pos) <= DRIFTER_STEAL_RADIUS &&
-          Math.abs(this.player.pos[1] - (drifter.pos[1] - 1.0)) <= 2.0
+          d.state === 'chase' &&
+          !d.has_stolen &&
+          distXZ(this.player.pos, d.pos) <= DRIFTER_STEAL_RADIUS &&
+          Math.abs(this.player.pos[1] - (d.pos[1] - 1.0)) <= 2.0
         ) {
-          const amount = Math.min(DRIFTER_MAX_STEAL, this.player.carried);
-          if (amount > 0) {
-            this.player.carried -= amount;
-            drifter.stolen = amount;
-            drifter.has_stolen = true;
-            drifter.state = 'flee';
-            drifter.flee_ticks = DRIFTER_FLEE_TICKS;
-            events.push(
-              this.makeEvent(nextTick, 'drifter_steal', {
-                drifter_id: drifter.id,
-                amount,
-                carried: this.player.carried,
-              })
-            );
+          hasStealingDrifter = true;
+          break;
+        }
+      }
+      if (hasStealingDrifter) {
+        const sortedDrifters = [...this.drifters]
+          .filter((d) => d.state === 'chase' && !d.has_stolen)
+          .sort((a, b) => cmpId(a.id, b.id));
+        for (const drifter of sortedDrifters) {
+          if (
+            distXZ(this.player.pos, drifter.pos) <= DRIFTER_STEAL_RADIUS &&
+            Math.abs(this.player.pos[1] - (drifter.pos[1] - 1.0)) <= 2.0
+          ) {
+            const amount = Math.min(DRIFTER_MAX_STEAL, this.player.carried);
+            if (amount > 0) {
+              this.player.carried -= amount;
+              drifter.stolen = amount;
+              drifter.has_stolen = true;
+              drifter.state = 'flee';
+              drifter.flee_ticks = DRIFTER_FLEE_TICKS;
+              events.push(
+                this.makeEvent(nextTick, 'drifter_steal', {
+                  drifter_id: drifter.id,
+                  amount,
+                  carried: this.player.carried,
+                })
+              );
+            }
           }
         }
       }
 
       if (this.player.invuln_ticks === 0) {
-        const sortedShades = [...this.shades].sort((a, b) => cmpId(a.id, b.id));
-        const hitter = sortedShades.find(
-          (s) =>
+        let hitter: ShadeState | undefined;
+        for (let i = 0; i < this.shades.length; i++) {
+          const s = this.shades[i];
+          if (
             (s.state === 'chase' || s.state === 'wander' || s.state === 'drain') &&
             s.eject_ticks === 0 &&
             distXZ(this.player.pos, s.pos) <= this.tuning.shade_hit_radius &&
             Math.abs(this.player.pos[1] - s.pos[1]) <= SHADE_HIT_MAX_DY
-        );
+          ) {
+            if (!hitter || cmpId(s.id, hitter.id) < 0) {
+              hitter = s;
+            }
+          }
+        }
 
         if (hitter) {
           const dropped = Math.floor(this.player.carried * this.tuning.hit_drop_ratio);

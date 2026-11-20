@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-cli/
+coverage/
+
+# Environment & secrets (NEVER commit)
+.env
+.env.*
+!.env.example
+
+# Logs & OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Temp verification / scratch
+tmp/
+.cache/

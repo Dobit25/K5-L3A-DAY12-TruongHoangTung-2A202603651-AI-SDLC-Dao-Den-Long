@@ -8,6 +8,7 @@ import { LanternAudio } from './audio.js';
 interface SavedSettings {
   volume: number;
   mouseSensitivity: number;
+  colorblind: boolean;
 }
 
 const SETTINGS_KEY = 'dao_den_long_settings_v1';
@@ -15,6 +16,11 @@ const SETTINGS_KEY = 'dao_den_long_settings_v1';
 interface LanternVisual {
   id: string;
   group: THREE.Group;
+  bulb: THREE.Mesh;
+  tearMarks: THREE.Group;
+  fuelBarBg: THREE.Mesh;
+  fuelBarFill: THREE.Mesh;
+  fuelBarMat: THREE.MeshBasicMaterial;
   bulbMat: THREE.MeshStandardMaterial;
   light: THREE.PointLight;
   safeRingMat: THREE.MeshBasicMaterial;
@@ -175,12 +181,13 @@ export class DaoDenLongApp {
           volume: typeof parsed.volume === 'number' ? parsed.volume : 0.7,
           mouseSensitivity:
             typeof parsed.mouseSensitivity === 'number' ? parsed.mouseSensitivity : 0.35,
+          colorblind: typeof parsed.colorblind === 'boolean' ? parsed.colorblind : false,
         };
       }
     } catch {
       // ignore storage errors
     }
-    return { volume: 0.7, mouseSensitivity: 0.35 };
+    return { volume: 0.7, mouseSensitivity: 0.35, colorblind: false };
   }
 
   private saveSettings(): void {
@@ -458,6 +465,32 @@ export class DaoDenLongApp {
     bulb.position.y = 3.4;
     group.add(bulb);
 
+    // Torn-paper dark marks shown when lantern is unlit (non-color differentiation)
+    const tearMarks = new THREE.Group();
+    const tearMat = new THREE.MeshBasicMaterial({ color: 0x161922 });
+    const slash1 = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.07, 0.65), tearMat);
+    slash1.position.y = 3.4;
+    slash1.rotation.z = 0.45;
+    const slash2 = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.06, 0.65), tearMat);
+    slash2.position.y = 3.25;
+    slash2.rotation.z = -0.35;
+    tearMarks.add(slash1, slash2);
+    group.add(tearMarks);
+
+    // 3D Fuel bar above lit lantern (fill parented inside bg so billboard stays aligned at all camera angles)
+    const fuelBarBg = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.16, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0x0e1430 })
+    );
+    fuelBarBg.position.set(0, 4.45, 0);
+    fuelBarBg.visible = false;
+    group.add(fuelBarBg);
+
+    const fuelBarMat = new THREE.MeshBasicMaterial({ color: PALETTE.lanternLit });
+    const fuelBarFill = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.11, 0.04), fuelBarMat);
+    fuelBarFill.position.set(0, 0, 0.04);
+    fuelBarBg.add(fuelBarFill);
+
     const light = new THREE.PointLight(PALETTE.lanternLit, 0, 26);
     light.position.set(0, 3.5, 0);
     group.add(light);
@@ -487,7 +520,19 @@ export class DaoDenLongApp {
     group.add(progressRing);
 
     this.scene.add(group);
-    return { id, group, bulbMat, light, safeRingMat, progressRing };
+    return {
+      id,
+      group,
+      bulb,
+      tearMarks,
+      fuelBarBg,
+      fuelBarFill,
+      fuelBarMat,
+      bulbMat,
+      light,
+      safeRingMat,
+      progressRing,
+    };
   }
 
   private createShadeVisual(pos: [number, number, number]): ShadeVisual {
@@ -604,7 +649,7 @@ export class DaoDenLongApp {
         <h2 style="margin:8px 0 12px;color:#FFE9B0;">${spec.name}</h2>
         <p style="margin:0 0 18px;font-style:italic;line-height:1.6;color:#e2e8f0;">${spec.elderQuote}</p>
         <div style="font-size:13px;color:#cbd5e1;margin-bottom:20px;">
-          Đèn cần thắp: <b>${spec.lanterns.length}</b> · Thời gian: <b>${Math.floor(spec.durationS / 60)}:${String(spec.durationS % 60).padStart(2, '0')}</b>
+          Đèn cần giữ sáng lúc bình minh: <b>≥${Math.ceil(0.6 * spec.lanterns.length)}/${spec.lanterns.length}</b> · Thời gian: <b>${Math.floor(spec.durationS / 60)}:${String(spec.durationS % 60).padStart(2, '0')}</b>
         </div>
         <button id="btn-begin" style="padding:11px 28px;border:none;border-radius:10px;background:#FFB347;color:#0E1430;font-weight:800;font-size:15px;cursor:pointer;">Bắt đầu Đêm ${night}</button>
       </div>
@@ -618,6 +663,8 @@ export class DaoDenLongApp {
 
   private renderPauseMenu(): void {
     this.screen = 'paused';
+    const dangerColor = this.settings.colorblind ? PALETTE.uiDangerColorblind : PALETTE.uiDanger;
+    const dangerPrefix = this.settings.colorblind ? '⚠ ' : '';
     this.overlayEl.style.display = 'flex';
     this.overlayEl.innerHTML = `
       <div style="padding:28px 36px;border-radius:16px;background:rgba(14,20,48,0.95);border:1px solid #F2C14E;min-width:300px;text-align:center;color:#F5F1E6;">
@@ -626,7 +673,7 @@ export class DaoDenLongApp {
           <button id="p-resume" style="padding:10px;border:none;border-radius:8px;background:#FFB347;color:#0E1430;font-weight:700;cursor:pointer;">Tiếp tục (Esc / P)</button>
           <button id="p-restart" style="padding:10px;border:1px solid #F2C14E;border-radius:8px;background:transparent;color:#F5F1E6;cursor:pointer;">Chơi lại Đêm ${this.currentNight}</button>
           <button id="p-settings" style="padding:10px;border:1px solid #8FA3B8;border-radius:8px;background:transparent;color:#F5F1E6;cursor:pointer;">Cài đặt</button>
-          <button id="p-menu" style="padding:10px;border:1px solid #FF5A5F;border-radius:8px;background:transparent;color:#FF5A5F;cursor:pointer;">Về menu chính</button>
+          <button id="p-menu" style="padding:10px;border:1px solid ${dangerColor};border-radius:8px;background:transparent;color:${dangerColor};cursor:pointer;">${dangerPrefix}Về menu chính</button>
         </div>
       </div>
     `;
@@ -651,15 +698,20 @@ export class DaoDenLongApp {
           Âm lượng: <b id="vol-val">${Math.round(this.settings.volume * 100)}%</b>
           <input id="vol-slider" type="range" min="0" max="1" step="0.05" value="${this.settings.volume}" style="width:100%;margin-top:6px;" />
         </label>
-        <label style="display:block;margin-bottom:20px;">
+        <label style="display:block;margin-bottom:14px;">
           Độ nhạy chuột: <b id="sens-val">${this.settings.mouseSensitivity.toFixed(2)}</b>
           <input id="sens-slider" type="range" min="0.1" max="1.0" step="0.05" value="${this.settings.mouseSensitivity}" style="width:100%;margin-top:6px;" />
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;">
+          <input id="cb-toggle" type="checkbox" ${this.settings.colorblind ? 'checked' : ''} />
+          <span>Bảng màu dễ phân biệt (Chế độ mù màu)</span>
         </label>
         <button id="set-back" style="width:100%;padding:10px;border:none;border-radius:8px;background:#FFB347;color:#0E1430;font-weight:700;cursor:pointer;">Lưu & Quay lại</button>
       </div>
     `;
     const volSlider = this.overlayEl.querySelector('#vol-slider') as HTMLInputElement;
     const sensSlider = this.overlayEl.querySelector('#sens-slider') as HTMLInputElement;
+    const cbToggle = this.overlayEl.querySelector('#cb-toggle') as HTMLInputElement;
     volSlider.addEventListener('input', () => {
       this.settings.volume = Number(volSlider.value);
       this.audio.setVolume(this.settings.volume);
@@ -671,6 +723,10 @@ export class DaoDenLongApp {
       this.settings.mouseSensitivity = Number(sensSlider.value);
       const lbl = this.overlayEl.querySelector('#sens-val');
       if (lbl) lbl.textContent = this.settings.mouseSensitivity.toFixed(2);
+      this.saveSettings();
+    });
+    cbToggle.addEventListener('change', () => {
+      this.settings.colorblind = cbToggle.checked;
       this.saveSettings();
     });
     this.overlayEl.querySelector('#set-back')?.addEventListener('click', () => {
@@ -704,15 +760,17 @@ export class DaoDenLongApp {
     this.screen = 'result';
     this.overlayEl.style.display = 'flex';
     const nextNight = (this.currentNight + 1) as NightNumber;
+    const dangerColor = this.settings.colorblind ? PALETTE.uiDangerColorblind : PALETTE.uiDanger;
+    const dangerPrefix = this.settings.colorblind ? '⚠ ' : '';
     this.overlayEl.innerHTML = `
-      <div style="padding:28px 36px;border-radius:16px;background:rgba(14,20,48,0.95);border:1px solid ${won ? '#F2C14E' : '#FF5A5F'};max-width:440px;text-align:center;color:#F5F1E6;">
-        <h2 style="margin:0 0 10px;color:${won ? '#FFE9B0' : '#FF5A5F'};">${won ? `Hoàn thành Đêm ${this.currentNight}!` : `Thất bại ở Đêm ${this.currentNight}`}</h2>
+      <div style="padding:28px 36px;border-radius:16px;background:rgba(14,20,48,0.95);border:1px solid ${won ? '#F2C14E' : dangerColor};max-width:440px;text-align:center;color:#F5F1E6;">
+        <h2 style="margin:0 0 10px;color:${won ? '#FFE9B0' : dangerColor};">${won ? `Hoàn thành Đêm ${this.currentNight}!` : `${dangerPrefix}Thất bại ở Đêm ${this.currentNight}`}</h2>
         <p style="margin:0 0 14px;color:#cbd5e1;">${
           won
-            ? 'Tất cả Đèn Lồng Lớn đã rực sáng!'
+            ? 'Mây đã giữ đủ Đèn Lồng Lớn cháy sáng đón bình minh!'
             : reason === 'no_flames'
               ? 'Mây đã mất hết Ngọn Lửa.'
-              : 'Đã hết thời gian trước bình minh.'
+              : 'Bình minh đã tới nhưng số đèn đang sáng chưa đạt ngưỡng 60%.'
         }</p>
         <div style="font-size:20px;font-weight:700;color:#F2C14E;margin-bottom:18px;">
           Điểm Đêm ${this.currentNight}: ${nightScore} · Tổng điểm: ${this.campaignScore}
@@ -822,11 +880,23 @@ export class DaoDenLongApp {
           break;
         case 'deposit':
           this.audio.playDeposit();
-          this.showToast(`Nạp +${ev.data.amount} vào ${ev.data.lantern_id} (${ev.data.deposited}/10)`);
+          this.showToast(`Nạp +${ev.data.amount} vào ${ev.data.lantern_id}`);
+          break;
+        case 'refuel':
+          this.audio.playDeposit();
+          this.showToast(`Châm dầu ${ev.data.lantern_id} → ${ev.data.fuel}%`);
+          break;
+        case 'lantern_out':
+          this.audio.playHit();
+          this.showToast(`Đèn ${ev.data.lantern_id} đã cạn dầu và tắt!`);
           break;
         case 'lantern_lit':
           this.audio.playLanternLit();
-          this.showToast(`Đèn Lồng ${ev.data.lantern_id} đã bừng sáng!`);
+          this.showToast(
+            ev.data.relight
+              ? `Đã thắp lại Đèn ${ev.data.lantern_id} (+40đ)!`
+              : `Đèn Lồng ${ev.data.lantern_id} đã bừng sáng (+100đ)!`
+          );
           break;
         case 'pulse':
           this.audio.playPulse();
@@ -874,21 +944,48 @@ export class DaoDenLongApp {
     }
     this.playerGroup.rotation.y = this.playerHeading;
 
-    const carryFactor = snap.player.carried / Math.max(1, this.engine.tuning.carry_capacity);
+    const carryFactor = snap.player.carried / Math.max(1, snap.player.capacity);
     this.playerHatLanternMat.emissiveIntensity = 0.6 + carryFactor * 1.5;
     this.playerLight.intensity = 1.6 + carryFactor * 2.8;
 
-    // Lanterns + standardized ambient intensity = 0.15 + 0.55 * (lit / total)
+    // Lanterns + fuel bars + 1Hz low-fuel blink + unlit 20% squash & torn marks
     let litCount = 0;
-    let nearestUnlit: { id: string; pos: [number, number, number]; deposited: number; dist: number } | null = null;
+    let nearestInteractable: {
+      id: string;
+      pos: [number, number, number];
+      lit: boolean;
+      ever_lit: boolean;
+      deposited: number;
+      fuel: number;
+      dist: number;
+    } | null = null;
+    let nearestUnlit: { id: string; pos: [number, number, number]; dist: number } | null = null;
+    const blink1Hz = Math.floor(this.elapsedVisual * 2) % 2 === 0;
+
     for (const l of snap.lanterns) {
+      const d = distXZ(snap.player.pos, l.pos);
       if (l.lit) {
         litCount++;
-      } else {
-        const d = distXZ(snap.player.pos, l.pos);
-        if (!nearestUnlit || d < nearestUnlit.dist) {
-          nearestUnlit = { id: l.id, pos: l.pos, deposited: l.deposited, dist: d };
-        }
+      } else if (!nearestUnlit || d < nearestUnlit.dist) {
+        nearestUnlit = { id: l.id, pos: l.pos, dist: d };
+      }
+
+      const eligible = (!l.lit || l.fuel < 100) && Math.abs(snap.player.pos[1] - l.pos[1]) <= 2.0;
+      if (
+        eligible &&
+        (!nearestInteractable ||
+          d < nearestInteractable.dist ||
+          (d === nearestInteractable.dist && l.id < nearestInteractable.id))
+      ) {
+        nearestInteractable = {
+          id: l.id,
+          pos: l.pos,
+          lit: l.lit,
+          ever_lit: l.ever_lit,
+          deposited: l.deposited,
+          fuel: l.fuel,
+          dist: d,
+        };
       }
 
       let vis = this.lanternVisuals.get(l.id);
@@ -897,18 +994,38 @@ export class DaoDenLongApp {
         this.lanternVisuals.set(l.id, vis);
       }
       vis.group.position.set(l.pos[0], l.pos[1], l.pos[2]);
-      const ratio = l.deposited / Math.max(1, this.engine.tuning.lantern_cost);
+
       if (l.lit) {
+        const lowFuel = l.fuel < 30;
+        vis.bulb.scale.set(1, 1, 1);
+        vis.tearMarks.visible = false;
         vis.bulbMat.color.setHex(PALETTE.lanternCore);
-        vis.bulbMat.emissiveIntensity = 1.7 + Math.sin(this.elapsedVisual * 4) * 0.15;
-        vis.light.intensity = 11;
-        vis.safeRingMat.opacity = 0.28;
+        vis.bulbMat.emissiveIntensity = lowFuel ? (blink1Hz ? 1.5 : 0.35) : 1.7;
+        vis.light.intensity = lowFuel ? (blink1Hz ? 9 : 2.5) : 11;
+        vis.safeRingMat.opacity = lowFuel ? 0 : 0.28;
         vis.progressRing.scale.setScalar(1.1);
+
+        vis.fuelBarBg.visible = true;
+        vis.fuelBarFill.visible = !lowFuel || blink1Hz;
+        const frac = Math.max(0.02, l.fuel / 100);
+        vis.fuelBarFill.scale.x = frac;
+        vis.fuelBarFill.position.x = -(1 - frac) * 0.76;
+        vis.fuelBarMat.color.setHex(
+          lowFuel ? (this.settings.colorblind ? 0xffffff : 0xff5a5f) : PALETTE.lanternLit
+        );
+        vis.fuelBarBg.lookAt(this.camera.position);
       } else {
+        const reqCost = l.ever_lit ? 5 : 10;
+        const ratio = l.deposited / reqCost;
+        // Unlit lantern: squashed 20% + visible tear marks (distinguishable without color)
+        vis.bulb.scale.set(1, 0.8, 1);
+        vis.tearMarks.visible = true;
         vis.bulbMat.color.setHex(PALETTE.lanternOff);
-        vis.bulbMat.emissiveIntensity = ratio * 0.8;
-        vis.light.intensity = ratio * 3.5;
+        vis.bulbMat.emissiveIntensity = ratio * 0.75;
+        vis.light.intensity = ratio * 3.0;
         vis.safeRingMat.opacity = 0;
+        vis.fuelBarBg.visible = false;
+        vis.fuelBarFill.visible = false;
         vis.progressRing.scale.setScalar(0.55 + ratio * 0.55);
       }
     }
@@ -956,14 +1073,15 @@ export class DaoDenLongApp {
       }
       vis.group.position.set(s.pos[0], s.pos[1], s.pos[2]);
       vis.group.lookAt(snap.player.pos[0], s.pos[1] + 1, snap.player.pos[2]);
+      const rimHex = this.settings.colorblind ? PALETTE.shadeRimColorblind : PALETTE.shadeRim;
       if (s.state === 'stunned') {
         vis.bodyMat.color.setHex(PALETTE.shadeStunned);
         vis.bodyMat.emissive.setHex(PALETTE.goldAccent);
         vis.rimMat.color.setHex(PALETTE.goldAccent);
       } else {
         vis.bodyMat.color.setHex(PALETTE.shadeBody);
-        vis.bodyMat.emissive.setHex(PALETTE.shadeRim);
-        vis.rimMat.color.setHex(PALETTE.shadeRim);
+        vis.bodyMat.emissive.setHex(rimHex);
+        vis.rimMat.color.setHex(rimHex);
       }
     }
     for (const [id, vis] of this.shadeVisuals.entries()) {
@@ -1077,17 +1195,20 @@ export class DaoDenLongApp {
       this.audio.playCountdownTick();
     }
 
-    // Full HUD (per Ticket-02 Part 3)
+    // Full HUD (per Ticket-02 & Ticket-03 dynamic capacity + colorblind danger styling)
+    const dangerColor = this.settings.colorblind ? PALETTE.uiDangerColorblind : PALETTE.uiDanger;
+    const dangerPrefix = this.settings.colorblind ? '⚠ ' : '';
     const mins = Math.floor(snap.time_left_s / 60);
     const secs = Math.floor(snap.time_left_s % 60)
       .toString()
       .padStart(2, '0');
     const lowTime = snap.time_left_s <= 30;
     const blink = lowTime && Math.floor(this.elapsedVisual * 4) % 2 === 0;
+    const reqWin = this.engine.getRequiredLanternsToWin();
 
-    const moteSlots = Array.from({ length: 10 }, (_, idx) => {
+    const moteSlots = Array.from({ length: snap.player.capacity }, (_, idx) => {
       const filled = idx < snap.player.carried;
-      return `<span style="display:inline-block;width:16px;height:16px;border-radius:4px;margin:0 2px;background:${
+      return `<span style="display:inline-block;width:${snap.player.capacity > 14 ? 11 : 15}px;height:14px;border-radius:3px;margin:0 1.5px;background:${
         filled ? '#FFF6C2' : 'rgba(245,241,230,0.16)'
       };border:1px solid #F2C14E;"></span>`;
     }).join('');
@@ -1095,22 +1216,22 @@ export class DaoDenLongApp {
     this.hudEl.innerHTML = `
       <div style="position:absolute;top:14px;left:16px;padding:8px 14px;border-radius:10px;background:rgba(14,20,48,0.78);border:1px solid rgba(242,193,78,0.35);color:#F5F1E6;">
         <div style="font-size:18px;">${'🔥'.repeat(snap.player.flames)}${'🖤'.repeat(Math.max(0, 3 - snap.player.flames))}</div>
-        ${snap.player.charm_s > 0 ? `<div style="font-size:12px;color:#FF5A5F;font-weight:700;">Bùa Gió: ${snap.player.charm_s.toFixed(1)}s</div>` : ''}
+        ${snap.player.charm_s > 0 ? `<div style="font-size:12px;color:${dangerColor};font-weight:700;">Bùa Gió: ${snap.player.charm_s.toFixed(1)}s</div>` : ''}
       </div>
 
       <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:8px 18px;border-radius:10px;background:rgba(14,20,48,0.82);border:1px solid ${
-        lowTime ? '#FF5A5F' : 'rgba(242,193,78,0.35)'
-      };color:${lowTime ? '#FF5A5F' : '#F5F1E6'};font-size:22px;font-weight:800;opacity:${blink ? 0.45 : 1};">
-        ${mins}:${secs}
+        lowTime ? dangerColor : 'rgba(242,193,78,0.35)'
+      };color:${lowTime ? dangerColor : '#F5F1E6'};font-size:22px;font-weight:800;opacity:${blink ? 0.45 : 1};">
+        ${lowTime ? dangerPrefix : ''}${mins}:${secs}
       </div>
 
       <div style="position:absolute;top:14px;right:16px;padding:8px 14px;border-radius:10px;background:rgba(14,20,48,0.78);border:1px solid rgba(242,193,78,0.35);text-align:right;color:#F5F1E6;">
-        <div>Đèn: <b style="color:#FFB347;">${litCount}/${snap.lanterns.length}</b></div>
+        <div>Đèn: <b style="color:${litCount >= reqWin ? '#FFB347' : dangerColor};">${litCount < reqWin ? dangerPrefix : ''}${litCount}/${snap.lanterns.length}</b> (cần ≥${reqWin})</div>
         <div>Điểm: <b style="color:#F2C14E;">${snap.score}</b></div>
       </div>
 
       <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:10px;background:rgba(14,20,48,0.82);border:1px solid rgba(242,193,78,0.4);text-align:center;">
-        <div style="font-size:11px;color:#F5F1E6;margin-bottom:4px;">Đom đóm (${snap.player.carried}/10)</div>
+        <div style="font-size:11px;color:#F5F1E6;margin-bottom:4px;">Đom đóm (${snap.player.carried}/${snap.player.capacity})</div>
         <div>${moteSlots}</div>
       </div>
 
@@ -1130,10 +1251,15 @@ export class DaoDenLongApp {
       </div>
     `;
 
-    // Interact prompt near unlit lantern
-    if (this.screen === 'playing' && nearestUnlit && nearestUnlit.dist <= this.engine.tuning.interact_radius) {
+    // Interact prompt near eligible lantern (light, relight, or refuel)
+    if (this.screen === 'playing' && nearestInteractable && nearestInteractable.dist <= this.engine.tuning.interact_radius) {
       this.promptEl.style.display = 'block';
-      this.promptEl.textContent = `E — Nạp ánh sáng (${nearestUnlit.deposited}/10)`;
+      if (nearestInteractable.lit) {
+        this.promptEl.textContent = `E — Châm dầu ${nearestInteractable.id} (${nearestInteractable.fuel.toFixed(0)}/100)`;
+      } else {
+        const reqCost = nearestInteractable.ever_lit ? 5 : 10;
+        this.promptEl.textContent = `E — ${nearestInteractable.ever_lit ? 'Thắp lại' : 'Nạp ánh sáng'} (${nearestInteractable.deposited}/${reqCost})`;
+      }
     } else {
       this.promptEl.style.display = 'none';
     }

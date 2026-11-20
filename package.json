@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "headless": "node dist-cli/cli/headless.js",
-    "verify": "npm run typecheck && npm run build:cli && npm test && npm run build:web"
+    "verify:determinism": "node scripts/verify-phase1.mjs",
+    "verify": "npm run typecheck && npm run build:cli && npm test && npm run verify:determinism && npm run build:web"
   },
   "dependencies": {
     "three": "^0.170.0"

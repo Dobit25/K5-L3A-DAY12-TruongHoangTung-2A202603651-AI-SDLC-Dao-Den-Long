@@ -6,13 +6,44 @@
 
 ## CP0 — Preparation
 - **Tech stack:** TypeScript + Vite + Three.js (3D browser) + Node.js thuần (core simulation & headless CLI) + Vitest.
-- **Cross-platform guarantee:** Toàn bộ core & CLI chạy thuần trên Node.js (Windows, macOS, Linux) không phụ thuộc DOM/WebGL; bản 3D chạy qua Vite / static web server chuẩn.
+- **Cross-platform guarantee:** Toàn bộ `src/core/` và `src/cli/` chạy thuần trên Node.js (Windows, macOS, Linux) không phụ thuộc DOM/WebGL; bản 3D chạy qua Vite / static web server chuẩn.
 - **Original files policy:** Giữ nguyên tuyệt đối 6 file đề bài gốc; sản phẩm dùng `README_review.md` để người dùng duyệt trước khi chốt nộp.
 
 ---
 
-## Phase 1 (PRD-0 + Test Contract)
-*(Chờ nội dung PRD-0 & Test Contract từ Lab board)*
+## Phase 1 (PRD-0 + Test Contract v1.0)
+
+### A. Yêu cầu bắt buộc (Hard Contract)
+1. **Đêm 1 — Đảo Bến:** hòn đảo tròn mặt đất `Y = 0`, người chơi xuất phát `(0, 0, 0)`, 5 Đèn Lồng Lớn (`L1`..`L5`).
+2. **`game.contract.json`** ở gốc repo với `contract_version: "1.0"`, `team: "2A202603651-TruongHoangTung"`, lệnh `build_cmd`, `run_cmd`, `headless_cmd`, và bảng `tuning` khớp 100% logic game.
+3. **Chế độ headless 60 tick/giây:** hỗ trợ `--seed`, `--night 1`, `--scenario`, `--inputs`, `--ticks`, `--out`, `--snapshot-every` (mặc định 10). Thoát `0` khi thành công, `2` khi file scenario/inputs sai định dạng, khác `0` khi lỗi CLI.
+4. **Mô hình tick & đầu ra JSONL:**
+   - Snapshot tick `0` sau khi dựng scenario (không phát event, không cộng điểm khi dựng scenario).
+   - Bước `k` đọc input tick `k` → sinh trạng thái `k+1`, event mang `tick = k+1` và luôn đứng trước snapshot cùng tick.
+   - `time_left_s = initial_duration_s - stepsRun / 60`.
+   - Dòng `end` luôn là dòng cuối cùng; tọa độ làm tròn 3 chữ số thập phân; tất định 100% với cùng `seed + scenario + inputs`.
+5. **Di chuyển theo camera:** chuẩn hóa vector `move` nếu độ dài > 1; xoay theo `cam_yaw_deg` với `x' = x·cosθ + z·sinθ`, `z' = −x·sinθ + z·cosθ`.
+6. **Khoảng cách đo theo mặt phẳng XZ (`<= r`)** giữa các điểm quy ước.
+
+### B. Giả định cho các phần PRD-0 để mở (căn cứ 7 giải đáp CP1)
+1. **Nhặt đom đóm:** Tự động nhặt khi đi vào `pickup_radius = 1.8m` (XZ `<= 1.8`). Giới hạn `carry_capacity = 10`; khi đầy, đom đóm giữ nguyên trên mặt đất (không nhặt, không mất). Mỗi lần nhặt phát `mote_picked` với `carried` mới và cộng `per_mote = 10`.
+2. **Nạp đèn:** Khi kích hoạt `interact` (chuyển `false -> true`) trong `interact_radius = 2.5m` tới đèn chưa sáng gần nhất (hòa khoảng cách ưu tiên `id` tăng dần), nạp `amount = min(carried, lantern_cost - deposited)` (`lantern_cost = 5`) và giữ lại phần dư trên tay Mây. Khi `deposited === 5`, đèn sáng (`lit = true`), cộng `per_lantern = 200`, phát `lantern_lit`.
+3. **Tỏa Sáng (Pulse):** Tiêu tốn `pulse_cost = 2` đom đóm đang cầm, cooldown `pulse_cooldown_s = 2.0s`. Không đủ đom đóm hoặc đang hồi chiêu thì không kích hoạt và không phát event `pulse`. Khi kích hoạt: làm choáng mọi Bóng Mực trong `pulse_radius = 8.0m` trong `pulse_stun_s = 3.0s`, đẩy lùi `pulse_push_m = 6.0m`, cộng `per_stun = 50` mỗi con, phát `pulse` kèm `stunned_ids`.
+4. **Bị Bóng Mực chạm:** Khi `invuln_s <= 0` và Bóng Mực không ở trạng thái `stunned` vào `shade_hit_radius = 1.4m`: mất 1 `flame`, rơi `dropped = Math.floor(carried * hit_drop_ratio)` (`hit_drop_ratio = 0.5`), `carried -= dropped`, nhận `invuln_s = 1.5s`. Đom đóm rơi tan biến (không sinh lại mote trên đất) nên `motes_active` nhất quán.
+5. **Rơi khỏi đảo:** `fall_enabled = false` — giữ Mây trong rìa đảo (tự mở rộng biên nếu scenario đặt thực thể xa hơn bán kính mặc định 42m), nên không phát event `player_hit` loại `"fall"`.
+6. **Vùng an toàn quanh đèn (`safe_radius = 6.0m`):** Áp dụng cho **đèn đã thắp (`lit: true`)**. Khi đèn vừa được thắp hoặc sau mỗi bước di chuyển/đẩy lùi, mọi Bóng Mực nằm trong vùng đều bị đẩy ra ngay ngoài `safe_radius + 0.05m` nên không bao giờ nằm trong vùng an toàn.
+7. **Điểm thưởng thắng:** Cộng ngay tại tick phát `game_over` (`won`, `all_lit`): `Math.floor(time_left_s) * per_second_left + flames * per_flame_left` (`per_second_left = 5`, `per_flame_left = 100`), bảo đảm `end.score` khớp snapshot cuối. Khi thua (`no_flames` hoặc `dawn`) không cộng thưởng.
+
+### C. Tiêu chí nghiệm thu kiểm chứng được (Acceptance Criteria)
+- **AC-1.1:** `game.contract.json` khớp 100% `DEFAULT_TUNING` (kiểm chứng bởi `tests/contract.test.ts`).
+- **AC-1.2:** Di chuyển theo `cam_yaw_deg` (0° và 90°) và chuẩn hóa đường chéo `[1, 1]` đúng công thức Contract C (`tests/engine.test.ts`).
+- **AC-1.3:** Nhặt đom đóm tự động trong `1.8m`, không vượt `carry_capacity = 10`, không làm mất đom đóm dư (`tests/engine.test.ts`).
+- **AC-1.4:** Nạp đèn chuyển đúng `min(carried, needed)`, giữ phần dư, thắp đèn ở 5/5, thắng & cộng thưởng khớp `end.score` (`tests/engine.test.ts`).
+- **AC-1.5:** Pulse không phát event khi thiếu đom đóm; khi đủ sẽ trừ `2`, đẩy lùi `6m`, stun `3s`, phát `pulse` (`tests/engine.test.ts`).
+- **AC-1.6:** Bóng Mực không vào `safe_radius = 6.0m` quanh đèn đã thắp, kể cả khi bị đẩy khi đèn vừa sáng (`tests/engine.test.ts`).
+- **AC-1.7:** Bị chạm rơi `floor(carried * 0.5)`, miễn thương `1.5s`, thua `no_flames` khi `flames = 0` và thua `dawn` khi hết giờ (`tests/engine.test.ts`).
+- **AC-1.8:** CLI headless xuất đúng thứ tự JSONL (tick 0 → events trước snapshot cùng tick → `end` cuối cùng), mã thoát `0/1/2` chính xác, và chạy 2 lần cùng seed cho kết quả **trùng khớp từng byte (SHA-256)** (`tests/scenarios.test.ts` + `scripts/verify-phase1.mjs`).
+- **AC-1.9:** Bản 3D build thành công (`dist/`) với đủ nhân vật Mây đội nón lá + đèn lồng mini, 5 Đèn Lồng Lớn, Đom Đóm, Bóng Mực, HUD, nút chơi lại và hiệu ứng sáng tạo không ảnh hưởng headless.
 
 ---
 

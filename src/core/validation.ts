@@ -1,4 +1,12 @@
-import type { InputFile, InputFrame, ScenarioFile, Vec3 } from './types.js';
+import type {
+  DrifterBehaviorState,
+  InputFile,
+  InputFrame,
+  MoteKind,
+  ScenarioFile,
+  ShadeBehaviorState,
+  Vec3,
+} from './types.js';
 
 export class ContractValidationError extends Error {
   readonly exitCode: number;
@@ -10,6 +18,16 @@ export class ContractValidationError extends Error {
   }
 }
 
+const VALID_SHADE_STATES = new Set<ShadeBehaviorState>([
+  'spawning',
+  'wander',
+  'chase',
+  'recoil',
+  'stunned',
+]);
+
+const VALID_DRIFTER_STATES = new Set<DrifterBehaviorState>(['idle', 'chase', 'flee', 'removed']);
+
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
@@ -19,6 +37,13 @@ function assertVec3(v: unknown, label: string): Vec3 {
     throw new ContractValidationError(`${label} must be an array of 3 finite numbers`, 2);
   }
   return [v[0], v[1], v[2]];
+}
+
+function assertNonNegInt(v: unknown, label: string): number {
+  if (!Number.isInteger(v) || (v as number) < 0) {
+    throw new ContractValidationError(`${label} must be a non-negative integer`, 2);
+  }
+  return v as number;
 }
 
 export function validateInputFile(raw: unknown): InputFile {
@@ -39,10 +64,7 @@ export function validateInputFile(raw: unknown): InputFile {
       throw new ContractValidationError(`frames[${i}] must be an object`, 2);
     }
     const fo = f as Record<string, unknown>;
-    if (!Number.isInteger(fo.tick) || (fo.tick as number) < 0) {
-      throw new ContractValidationError(`frames[${i}].tick must be a non-negative integer`, 2);
-    }
-    const tick = fo.tick as number;
+    const tick = assertNonNegInt(fo.tick, `frames[${i}].tick`);
     if (tick <= prevTick) {
       throw new ContractValidationError(
         `frames[${i}].tick (${tick}) must strictly increase after ${prevTick}`,
@@ -75,7 +97,7 @@ export function validateInputFile(raw: unknown): InputFile {
       frame.cam_yaw_deg = fo.cam_yaw_deg;
     }
 
-    for (const key of ['jump', 'interact', 'pulse', 'dash'] as const) {
+    for (const key of ['jump', 'interact', 'pulse', 'dash', 'pause'] as const) {
       if (fo[key] !== undefined) {
         if (typeof fo[key] !== 'boolean') {
           throw new ContractValidationError(`frames[${i}].${key} must be a boolean`, 2);
@@ -104,32 +126,33 @@ export function validateScenarioFile(raw: unknown): ScenarioFile {
     const p = obj.player as Record<string, unknown>;
     scenario.player = {};
     if (p.pos !== undefined) scenario.player.pos = assertVec3(p.pos, 'scenario.player.pos');
-    if (p.carried !== undefined) {
-      if (!Number.isInteger(p.carried) || (p.carried as number) < 0) {
-        throw new ContractValidationError('scenario.player.carried must be a non-negative integer', 2);
-      }
-      scenario.player.carried = p.carried as number;
-    }
-    if (p.flames !== undefined) {
-      if (!Number.isInteger(p.flames) || (p.flames as number) < 0) {
-        throw new ContractValidationError('scenario.player.flames must be a non-negative integer', 2);
-      }
-      scenario.player.flames = p.flames as number;
-    }
+    if (p.carried !== undefined)
+      scenario.player.carried = assertNonNegInt(p.carried, 'scenario.player.carried');
+    if (p.flames !== undefined)
+      scenario.player.flames = assertNonNegInt(p.flames, 'scenario.player.flames');
+    if (p.invuln_ticks !== undefined)
+      scenario.player.invuln_ticks = assertNonNegInt(p.invuln_ticks, 'scenario.player.invuln_ticks');
+    if (p.dash_cd_ticks !== undefined)
+      scenario.player.dash_cd_ticks = assertNonNegInt(
+        p.dash_cd_ticks,
+        'scenario.player.dash_cd_ticks'
+      );
+    if (p.pulse_cd_ticks !== undefined)
+      scenario.player.pulse_cd_ticks = assertNonNegInt(
+        p.pulse_cd_ticks,
+        'scenario.player.pulse_cd_ticks'
+      );
+    if (p.charm_ticks !== undefined)
+      scenario.player.charm_ticks = assertNonNegInt(p.charm_ticks, 'scenario.player.charm_ticks');
   }
 
-  if (obj.random_motes !== undefined) {
-    if (typeof obj.random_motes !== 'boolean') {
-      throw new ContractValidationError('scenario.random_motes must be a boolean', 2);
+  for (const flag of ['random_motes', 'random_shades', 'random_drifters', 'wind_enabled'] as const) {
+    if (obj[flag] !== undefined) {
+      if (typeof obj[flag] !== 'boolean') {
+        throw new ContractValidationError(`scenario.${flag} must be a boolean`, 2);
+      }
+      scenario[flag] = obj[flag] as boolean;
     }
-    scenario.random_motes = obj.random_motes;
-  }
-
-  if (obj.random_shades !== undefined) {
-    if (typeof obj.random_shades !== 'boolean') {
-      throw new ContractValidationError('scenario.random_shades must be a boolean', 2);
-    }
-    scenario.random_shades = obj.random_shades;
   }
 
   if (obj.time_left_s !== undefined) {
@@ -153,7 +176,22 @@ export function validateScenarioFile(raw: unknown): ScenarioFile {
         if (mo.id !== undefined && typeof mo.id !== 'string') {
           throw new ContractValidationError(`scenario.motes[${idx}].id must be a string`, 2);
         }
-        return { id: mo.id as string | undefined, pos };
+        if (mo.kind !== undefined && mo.kind !== 'random' && mo.kind !== 'dropped') {
+          throw new ContractValidationError(`scenario.motes[${idx}].kind must be random|dropped`, 2);
+        }
+        let ttl_ticks: number | null | undefined;
+        if (mo.ttl_ticks !== undefined) {
+          ttl_ticks =
+            mo.ttl_ticks === null
+              ? null
+              : assertNonNegInt(mo.ttl_ticks, `scenario.motes[${idx}].ttl_ticks`);
+        }
+        return {
+          id: mo.id as string | undefined,
+          pos,
+          kind: mo.kind as MoteKind | undefined,
+          ttl_ticks,
+        };
       }
       throw new ContractValidationError(`scenario.motes[${idx}] must be [x,y,z] or {id?, pos}`, 2);
     });
@@ -172,13 +210,92 @@ export function validateScenarioFile(raw: unknown): ScenarioFile {
       if (so.id !== undefined && typeof so.id !== 'string') {
         throw new ContractValidationError(`scenario.shades[${idx}].id must be a string`, 2);
       }
-      if (so.state !== undefined && typeof so.state !== 'string') {
-        throw new ContractValidationError(`scenario.shades[${idx}].state must be a string`, 2);
+      if (so.state !== undefined) {
+        if (typeof so.state !== 'string' || !VALID_SHADE_STATES.has(so.state as ShadeBehaviorState)) {
+          throw new ContractValidationError(
+            `scenario.shades[${idx}].state must be spawning|wander|chase|recoil|stunned`,
+            2
+          );
+        }
       }
+      const state_ticks_left =
+        so.state_ticks_left !== undefined
+          ? assertNonNegInt(so.state_ticks_left, `scenario.shades[${idx}].state_ticks_left`)
+          : undefined;
       return {
         id: so.id as string | undefined,
         pos,
-        state: so.state as string | undefined,
+        state: so.state as ShadeBehaviorState | undefined,
+        state_ticks_left,
+      };
+    });
+  }
+
+  if (obj.drifters !== undefined) {
+    if (!Array.isArray(obj.drifters)) {
+      throw new ContractValidationError('scenario.drifters must be an array', 2);
+    }
+    scenario.drifters = obj.drifters.map((item, idx) => {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+        throw new ContractValidationError(`scenario.drifters[${idx}] must be an object`, 2);
+      }
+      const d = item as Record<string, unknown>;
+      const pos = assertVec3(d.pos, `scenario.drifters[${idx}].pos`);
+      if (d.id !== undefined && typeof d.id !== 'string') {
+        throw new ContractValidationError(`scenario.drifters[${idx}].id must be a string`, 2);
+      }
+      if (d.state !== undefined) {
+        if (
+          typeof d.state !== 'string' ||
+          !VALID_DRIFTER_STATES.has(d.state as DrifterBehaviorState)
+        ) {
+          throw new ContractValidationError(
+            `scenario.drifters[${idx}].state must be idle|chase|flee|removed`,
+            2
+          );
+        }
+      }
+      return {
+        id: d.id as string | undefined,
+        pos,
+        state: d.state as DrifterBehaviorState | undefined,
+        stolen:
+          d.stolen !== undefined ? assertNonNegInt(d.stolen, `scenario.drifters[${idx}].stolen`) : undefined,
+        flee_ticks:
+          d.flee_ticks !== undefined
+            ? assertNonNegInt(d.flee_ticks, `scenario.drifters[${idx}].flee_ticks`)
+            : undefined,
+      };
+    });
+  }
+
+  if (obj.charms !== undefined) {
+    if (!Array.isArray(obj.charms)) {
+      throw new ContractValidationError('scenario.charms must be an array', 2);
+    }
+    scenario.charms = obj.charms.map((item, idx) => {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+        throw new ContractValidationError(`scenario.charms[${idx}] must be an object`, 2);
+      }
+      const c = item as Record<string, unknown>;
+      if (typeof c.id !== 'string' || c.id.length === 0) {
+        throw new ContractValidationError(`scenario.charms[${idx}].id must be a non-empty string`, 2);
+      }
+      return {
+        id: c.id,
+        pos: c.pos !== undefined ? assertVec3(c.pos, `scenario.charms[${idx}].pos`) : undefined,
+        available:
+          c.available !== undefined
+            ? typeof c.available === 'boolean'
+              ? c.available
+              : (() => {
+                  throw new ContractValidationError(`scenario.charms[${idx}].available must be boolean`, 2);
+                })()
+            : undefined,
+        respawn_ticks:
+          c.respawn_ticks !== undefined
+            ? assertNonNegInt(c.respawn_ticks, `scenario.charms[${idx}].respawn_ticks`)
+            : undefined,
       };
     });
   }
@@ -198,10 +315,7 @@ export function validateScenarioFile(raw: unknown): ScenarioFile {
       const result: { id: string; pos?: Vec3; deposited?: number; lit?: boolean } = { id: lo.id };
       if (lo.pos !== undefined) result.pos = assertVec3(lo.pos, `scenario.lanterns[${idx}].pos`);
       if (lo.deposited !== undefined) {
-        if (!Number.isInteger(lo.deposited) || (lo.deposited as number) < 0) {
-          throw new ContractValidationError(`scenario.lanterns[${idx}].deposited must be a non-negative integer`, 2);
-        }
-        result.deposited = lo.deposited as number;
+        result.deposited = assertNonNegInt(lo.deposited, `scenario.lanterns[${idx}].deposited`);
       }
       if (lo.lit !== undefined) {
         if (typeof lo.lit !== 'boolean') {
@@ -215,4 +329,3 @@ export function validateScenarioFile(raw: unknown): ScenarioFile {
 
   return scenario;
 }
-

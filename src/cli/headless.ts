@@ -65,8 +65,8 @@ export function parseCliArgs(argv: string[]): CliArgs {
         break;
       case '--night': {
         const val = parseStrictInt(next(), '--night');
-        if (val !== 1) {
-          throw new ContractValidationError('--night must be 1 for Phase 1', 1);
+        if (val !== 1 && val !== 2 && val !== 3) {
+          throw new ContractValidationError('--night must be 1, 2, or 3', 1);
         }
         night = val;
         break;

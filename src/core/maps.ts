@@ -55,8 +55,8 @@ function makeNight1(): NightMapSpec {
   return {
     night: 1,
     name: 'Đêm 1 — Đảo Bến',
-    elderQuote: '“Sương đen đã phủ kín bến cũ. Hãy gom đom đóm thắp lại 5 ngọn đèn lớn trước bình minh, Mây nhé.”',
-    durationS: 300,
+    elderQuote: '“Sương đen đã phủ kín bến cũ. Hãy giữ ít nhất 3/5 ngọn đèn cháy sáng tới bình minh, Mây nhé.”',
+    durationS: 240,
     spawnPos: [0, 0, 0],
     lanterns: [
       { id: 'L1', pos: [0, 0, 25] },
@@ -90,8 +90,8 @@ function makeNight2(): NightMapSpec {
   return {
     night: 2,
     name: 'Đêm 2 — Đảo Cau',
-    elderQuote: '“Cầu tre nối hai bờ đảo cau rất hẹp, lại có Gió Lạc rình rập. Nhớ tận dụng bục nhảy và Bùa Gió!”',
-    durationS: 330,
+    elderQuote: '“Cầu tre nối hai bờ đảo cau rất hẹp, lại có Gió Lạc rình rập. Hãy giữ ít nhất 4/6 ngọn đèn sáng tới bình minh!”',
+    durationS: 270,
     spawnPos: [0, 0, 0],
     lanterns: [
       { id: 'L1', pos: [0, 0, 20] },
@@ -157,8 +157,8 @@ function makeNight3(): NightMapSpec {
   return {
     night: 3,
     name: 'Đêm 3 — Đảo Chuông',
-    elderQuote: '“Đêm cuối cùng trên Đảo Chuông ba tầng. Gió lớn sẽ nổi lên từng đợt — hãy thắp trọn 7 ngọn đèn đón bình minh!”',
-    durationS: 360,
+    elderQuote: '“Đêm cuối cùng trên Đảo Chuông ba tầng. Gió lớn sẽ nổi lên từng đợt — hãy giữ ít nhất 5/7 ngọn đèn sáng đón bình minh!”',
+    durationS: 300,
     spawnPos: [0, 0, -12],
     lanterns: [
       { id: 'L1', pos: [0, 6, 6] },

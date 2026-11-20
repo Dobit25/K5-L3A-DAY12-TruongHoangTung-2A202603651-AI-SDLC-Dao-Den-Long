@@ -1,0 +1,12 @@
+{
+  "contract_version": "1.3",
+  "avg_fps": 3275.7,
+  "p1_low_fps": 1077.9,
+  "frame_ms_p95": 0.5,
+  "frames": 98272,
+  "load_ms": 1219,
+  "peak_mem_mb": 9.7,
+  "vsync_off": true,
+  "renderer": "Three.js 0.170 (ANGLE (NVIDIA, NVIDIA GeForce RTX 4050 Laptop GPU (0x000028E1) Direct3D11 vs_5_0 ps_5_0, D3D11))",
+  "os": "win32 10.0.26200 (x64)"
+}

@@ -88,5 +88,16 @@
 
 ---
 
-## Phase 4 (Ticket-04)
-*(Chờ nội dung Ticket-04 từ Lab board)*
+## Phase 4 (Ticket-04 — "Bình minh: phát hành v1.0.0" — Contract v1.3)
+- **Benchmark (`bench_cmd`: `node scripts/bench.mjs`):**
+  - Mở cửa sổ Chromium/Chrome/Edge `1280×720` không toàn màn hình với `--disable-frame-rate-limit --disable-gpu-vsync` (`vsync_off: true`).
+  - Dùng `THREE.InstancedMesh` cho 200 Bóng Mực và 100 đom đóm, tắt toàn bộ hiệu ứng/thực thể sáng tạo thêm (biển mây, sao, bến gỗ) để đảm bảo đo đúng cảnh chuẩn.
+  - `load_ms` đo từ lúc tiến trình `scripts/bench.mjs` khởi chạy tới khung hình đầu tiên của cảnh benchmark (qua tín hiệu `/__bench_ready`).
+  - `peak_mem_mb`: do bản web chạy trong sandbox trình duyệt, dùng `performance.memory.usedJSHeapSize` khi trình duyệt hỗ trợ hoặc ghi `null` theo đúng quy định Contract v1.3.
+- **Soak Test (`soak_cmd`: `node --expose-gc dist-cli/cli/soak.js`):**
+  - Chạy 10 Đêm liên tiếp xoay vòng `1 → 2 → 3`, Đêm thứ `i` (`0..9`) dùng `seed + i`.
+  - Thực hiện 120 tick JIT warmup trước Đêm đầu tiên và gọi `gc()` để RSS phản ánh bộ nhớ thực tế (loại trừ nhiễu biên dịch JIT một lần của V8).
+- **Bảng xếp hạng cục bộ (`run_cmd`: `node scripts/run-game.mjs`):**
+  - Phục vụ bản web tĩnh `dist/` kèm REST API cục bộ (`/api/leaderboard`) lưu thẳng xuống đĩa tại `data/leaderboard.json` (đồng bộ thêm `localStorage`), bảo đảm tồn tại sau khi đóng/mở trình duyệt và hỗ trợ chuẩn lệnh `<run_cmd> --export-leaderboard out.json`.
+- **Dễ tiếp cận (Accessibility):**
+  - Đổi 9 phím điều khiển kèm kiểm tra trùng phím + "Khôi phục mặc định"; phụ đề trực quan + mũi tên chỉ hướng Bóng Mực mới xuất hiện; chế độ Giảm chuyển động tắt chớp/rung; cỡ chữ UI tối thiểu `18px` ở `1280×720` và tùy chọn `×1.25` (`22.5px`).

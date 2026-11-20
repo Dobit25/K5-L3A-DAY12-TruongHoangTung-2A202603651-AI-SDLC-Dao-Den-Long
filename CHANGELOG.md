@@ -4,6 +4,16 @@ All notable changes and breaking contract migrations across lab phases.
 
 ---
 
+## [v1.0.0 / Phase 4] — Contract v1.3 ("Bình minh: phát hành v1.0.0")
+### Added
+- **Benchmark Mode (`bench_cmd`: `node scripts/bench.mjs`):** Standardized 1280×720 Night 1 benchmark scene (`src/render/benchmark.ts`, `InstancedMesh` 200 wandering Shades + 100 Motes, L1–L3 lit with `fuel = 100`, camera orbiting `R=30m, Y=15m`, 15s/rev CCW, 3s warmup + `--duration` measurement, `--disable-frame-rate-limit --disable-gpu-vsync`), outputting `bench.json` (`contract_version: "1.3"`).
+- **Soak Test (`soak_cmd`: `node --expose-gc dist-cli/cli/soak.js`):** 10 consecutive Nights headless stress test (`Night 1→2→3` rotation, deterministic random inputs per Ticket-04 spec, RSS tracking `mem_start_mb` / `mem_end_mb`), outputting `soak.json` with `0` crashes and bounded RSS growth (`<= 1.2×`).
+- **Local Leaderboard & CLI Export (`run_cmd`: `node scripts/run-game.mjs`):** Top-10 local disk-persisted leaderboard (`data/leaderboard.json` + browser `localStorage` sync), supports `3–12` char names (ASCII `[A-Za-z0-9_]` + Vietnamese letters), ISO-8601 timestamps with timezone, tie-break by earliest `achieved_at`, Main Menu Leaderboard viewer, post-Dawn/Loss save prompt, and `--export-leaderboard out.json`.
+- **Accessibility Suite:** Full 9-action key rebinding with duplicate-key conflict detection & Reset to Defaults; live subtitles + edge-of-screen directional arrow for Shade spawns, Wind warning, last 10s countdown, and `< 30%` low-fuel lanterns; Reduced Motion toggle (disables screen flash/blink & camera bob); `>= 18px` minimum UI font size at `1280×720` with `×1.25` Large Text mode.
+- **Release Packaging:** Clean 3-command quickstart (`npm ci`, `npm run build`, `npm start`), static web bundle (`dist/`), backup `Dockerfile`, full project Retrospective (`docs/notes/retro.md`), and demo recording guide.
+
+---
+
 ## [Phase 3] — Contract v1.2 ("Đèn cạn dầu" Change Request)
 ### Breaking Changes (`[THAY THẾ]`)
 - **Win Condition Replaced:** Removed early victory (`all_lit`) when all lanterns are lit. Nights now last until dawn (`240s / 270s / 300s`); victory (`dawn_survived`) requires surviving with `>= ceil(0.6 * total)` lit lanterns (`3/5`, `4/6`, `5/7`).

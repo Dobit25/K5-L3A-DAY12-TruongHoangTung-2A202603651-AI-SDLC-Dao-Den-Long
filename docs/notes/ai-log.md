@@ -17,7 +17,7 @@
 | Phase 1 | Triển khai PRD-0 + Test Contract v1.0, game 3D, audio, 17 tests, independent review & sửa lỗi | ~8 | ~45k / ~22k | Viết song song toàn bộ `src/core` trong 1 lượt; tách reviewer độc lập chỉ đọc file liên quan |
 | Phase 2 | Chuẩn hóa Contract v1.1, 3 Đêm (Đảo Bến/Cau/Chuông), Dash/Fall/Drifter/Charm/Wind/Pause, UI 3 Đêm, 22 tests, benchmark 21.600 tick & independent review | ~7 | ~52k / ~28k | Viết song song toàn bộ `src/core` + `maps.ts` trong 1 lô; tận dụng lại cấu trúc Phase 1 |
 | Phase 3 | Change Request Contract v1.2 (nhiên liệu đèn `1/60`, `drain`, `dawn_survived`, sức chứa tăng dần, mù màu, ADR-001, CHANGELOG, 30 tests & independent review) | ~6 | ~48k / ~24k | Cập nhật cục bộ `engine.ts` + `game3d.ts` nhờ tách lõi sạch từ CP0 |
-| Phase 4 | *(Chờ triển khai)* | — | — | — |
+| Phase 4 | Release `v1.0.0` Contract v1.3 (Benchmark 1280×720 `InstancedMesh`, Soak 10 Đêm, Bảng xếp hạng cục bộ + `--export-leaderboard`, Accessibility, Docker, Retro, 33 tests & independent review) | ~8 | ~58k / ~32k | Tách riêng `benchmark.ts`, `soak.ts`, `leaderboard.ts`, `run-game.mjs`; kiểm chứng thật `bench.json` & `soak.json` |
 
 ---
 
@@ -66,3 +66,15 @@
   4. **Chuỗi UI sót từ Phase 2 & màu `#FF5A5F` hardcode:** Cập nhật lời giới thiệu Đêm, màn hình kết quả `dawn_survived`/`dawn` và áp dụng bảng màu mù màu `#FFFFFF + ⚠` đồng nhất trên toàn bộ modal.
 - **Điều chỉnh Harness sau Phase 3:**
   - Mở rộng quy tắc số nguyên trong `AGENTS.md` sang cả đơn vị nhiên liệu (`fuel_60ths`) và nâng cấp cổng `scripts/verify-phase3.mjs` cho Contract v1.2.
+
+### Phase 4
+- **Đạt:** Hoàn thiện Release `v1.0.0` (Contract v1.3): `33/33` tests xanh, `soak.json` (`10` Đêm, `0` crash, RSS `54.0 → 57.4 MB` = `1.063×`, `0.5s`), `bench.json` (`avg_fps = 3275.7`, `p1_low_fps = 1077.9`, `frame_ms_p95 = 0.5ms`, `load_ms = 1219ms`, `vsync_off = true`), bảng xếp hạng lưu đĩa + `--export-leaderboard`, bộ Accessibility đầy đủ và `docs/notes/retro.md`.
+- **Các lỗi AI mắc phải & Cách phát hiện:**
+  1. **RSS test Soak vượt ngưỡng 1.2× trong Vitest (`72.8 → 92.5 MB`) và sau đó khi chỉ warmup 120 tick (`55.7 → 67.5 MB`):** *Phát hiện nhờ:* chạy thật `npm run verify` với assert chặt `<= 1.2×`. *Khắc phục:* tách test Soak sang tiến trình CLI độc lập (`--expose-gc`), mở rộng JIT warmup Đêm 3 `2000` tick + loại bỏ cấp phát mảng tạm không cần thiết trong `GameEngine.step()` → RSS ổn định tuyệt đối `54.0 → 57.4 MB` (`1.063×`).
+  2. **Các lỗi bảo mật/đóng gói phát hiện bởi Subagent `Phase 4 Independent Reviewer`:**
+     - Docker thiếu `.dockerignore` và `run-game.mjs` bind cứng `127.0.0.1` → thêm `.dockerignore` + `ENV HOST=0.0.0.0` trong `Dockerfile`.
+     - Nội suy `innerHTML` chưa escape tên bảng xếp hạng / phụ đề → thêm `escapeHtml()` và chuẩn hóa `NFC` + lọc lại trong `readLeaderboard()`.
+     - `--export-leaderboard=out.json` bị bỏ qua; thiếu `path.sep` kiểm tra traversal `dist/`; `setTimeout` dọn temp profile trong `bench.mjs` bị `process.exit(0)` ngắt trước khi chạy → sửa triệt để cả 3 điểm.
+     - Cảnh benchmark thiếu `castShadow = true` trên Mây & 200 Bóng Mực; đổi phím chưa cho hủy bằng `Esc`; mũi tên Bóng Mực xoay ký tự `'!'` khó đọc → bật `castShadow = true`, thêm hủy `Esc` + khóa phím hệ thống, đổi sang mũi tên `'➤'`.
+- **Điều chỉnh Harness sau Phase 4:**
+  - Cập nhật `AGENTS.md` đầy đủ lệnh `npm start`, `bench`, `soak`, `--export-leaderboard` và tổng kết toàn bộ tiến hóa harness qua 4 phase trong `docs/notes/retro.md`.

@@ -5,13 +5,17 @@ import path from 'node:path';
 import { DEFAULT_TUNING } from '../src/core/config.js';
 import { runHeadlessCli } from '../src/cli/headless.js';
 
-describe('Test Contract v1.2 compliance', () => {
-  it('game.contract.json matches engine DEFAULT_TUNING v1.2 exactly', () => {
+describe('Test Contract v1.3 compliance', () => {
+  it('game.contract.json matches engine DEFAULT_TUNING v1.3 and defines bench_cmd & soak_cmd', () => {
     const contractPath = path.resolve(process.cwd(), 'game.contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
 
-    expect(contract.contract_version).toBe('1.2');
+    expect(contract.contract_version).toBe('1.3');
     expect(contract.team).toBe('2A202603651-TruongHoangTung');
+    expect(typeof contract.bench_cmd).toBe('string');
+    expect(contract.bench_cmd.length).toBeGreaterThan(0);
+    expect(typeof contract.soak_cmd).toBe('string');
+    expect(contract.soak_cmd.length).toBeGreaterThan(0);
     expect(contract.tuning).toEqual(DEFAULT_TUNING);
     expect(contract.tuning.fuel_max).toBe(100);
     expect(contract.tuning.relight_cost).toBe(5);

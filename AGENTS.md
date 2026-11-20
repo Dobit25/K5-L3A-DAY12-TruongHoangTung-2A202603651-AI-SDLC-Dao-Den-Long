@@ -17,8 +17,11 @@
 - Install: `npm ci`
 - Dev server (3D game): `npm run dev`
 - Build static release & headless CLI: `npm run build`
+- Run game (3D + local leaderboard API): `npm start` *(or `node scripts/run-game.mjs --export-leaderboard out.json`)*
 - Run headless CLI: `node dist-cli/cli/headless.js --seed <int> --night <1|2|3> --ticks <int> --out <file.jsonl>`
-- Run full verification gate: `npm run verify` *(typecheck + build:cli + vitest + Phase 3 Contract v1.2 multi-night SHA-256 determinism & full-night benchmark + build:web)*
+- Run 30s 1280×720 benchmark: `node scripts/bench.mjs --seed 42 --duration 30 --out bench.json`
+- Run 10-night soak test: `node --expose-gc dist-cli/cli/soak.js --seed 7 --nights 10 --out soak.json`
+- Run full verification gate: `npm run verify` *(typecheck + build:cli + vitest + Contract v1.3 tests + multi-night SHA-256 determinism + build:web)*
 - Note (Windows PowerShell 5.1): chain commands with `;` rather than `&&`.
 
 ## Phase Workflow Checklist
@@ -34,4 +37,5 @@
 - **Phase 1:** Enforced `game.contract.json` ↔ `DEFAULT_TUNING` deep-equality test (`tests/contract.test.ts`), added automated SHA-256 determinism gate (`scripts/verify-phase1.mjs`) into `npm run verify`, added integer-tick-timer rule after independent review caught IEEE-754 float drift, and added PowerShell `;` separator note.
 - **Phase 2:** Upgraded contract & verification gate to Test Contract v1.1 (`scripts/verify-phase2.mjs`) covering Nights 1–3 SHA-256 determinism + 21,600-tick `< 30s` performance benchmark, added per-feature headless scenarios (`tests/phase2-features.test.ts`), and updated `.agents/skills/verify-phase/SKILL.md` for multi-night regression.
 - **Phase 3:** Migrated to Contract v1.2 (`scripts/verify-phase3.mjs`, `tests/phase3-fuel.test.ts`), extended integer-unit rule to lantern fuel (`fuel_60ths` 1/60th integer scale), added `ADR-001` and `CHANGELOG.md` breaking-changes documentation, and updated affected tests with explicit documented reasons (zero silently skipped tests).
+- **Phase 4:** Upgraded to Contract v1.3 (`game.contract.json` adding `bench_cmd` & `soak_cmd`), added isolated-process soak RSS verification (`--expose-gc` + JIT warmup after catching V8 nursery expansion noise in Vitest worker), added leaderboard export & soak unit/CLI tests (`tests/phase4-release.test.ts`), and finalized Release `v1.0.0` packaging (`scripts/run-game.mjs`, `scripts/bench.mjs`, `Dockerfile`).
 

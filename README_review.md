@@ -1,7 +1,7 @@
 # Đảo Đèn Lồng — Game 3D & Headless Engine (`v1.0.0` · Contract v1.3)
 
-> **Video Demo (< 5 phút):** *(Sau khi quay xong, đính kèm vào Release `v1.0.0` hoặc đặt tại `docs/demo/demo.mp4` và cập nhật link tại dòng này)*
-> **Lưu ý file `_review`:** File này được đặt tên `README_review.md` để giữ nguyên tuyệt đối 6 file đề bài gốc (`README.md`, `GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`) cho tới khi tác giả duyệt chốt tên nộp bài.
+> **Video Demo (< 5 phút):** [Xem / Tải Video Demo (.mp4, < 5 phút)](https://github.com/Dobit25/K5-L3A-DAY12-TruongHoangTung-2A202603651-AI-SDLC-Dao-Den-Long/releases/download/v1.0.0/demo.mp4) · [Trang Release v1.0.0](https://github.com/Dobit25/K5-L3A-DAY12-TruongHoangTung-2A202603651-AI-SDLC-Dao-Den-Long/releases/tag/v1.0.0)
+> **Lưu ý file `_review`:** File này được đặt tên `README_review.md` để giữ nguyên tuyệt đối 5 file đề bài gốc còn lại (`GUIDE.md`, `CHECKPOINTS.md`, `SUBMISSION.md`, `RULES.md`, `RUBRIC.md`); nội dung sản phẩm đã được chốt sang `README.md` theo Phương án A (kèm lưu trữ nguyên văn đề bài gốc ở phần cuối `README.md`).
 
 ![Đảo Đèn Lồng — Đêm 1 Đảo Bến (1280×720 WebGL)](docs/proof/phase-4/screenshot-night1.png)
 

@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-cli
+.git
+.env
+.env.*
+bench.json
+soak.json
+data/
+coverage/
+tmp/
+

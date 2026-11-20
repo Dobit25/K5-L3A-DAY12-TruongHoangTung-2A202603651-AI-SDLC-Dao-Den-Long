@@ -1,11 +1,12 @@
 {
   "name": "dao-den-long",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Đảo Đèn Lồng — 3D third-person game & deterministic headless engine (Day 12 AI SDLC)",
   "scripts": {
     "dev": "vite",
+    "start": "node scripts/run-game.mjs",
     "build:web": "vite build",
     "build:cli": "tsc -p tsconfig.cli.json",
     "build": "npm run typecheck && npm run build:cli && npm run build:web",
@@ -13,6 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "headless": "node dist-cli/cli/headless.js",
+    "soak": "node --expose-gc dist-cli/cli/soak.js",
+    "bench": "node scripts/bench.mjs",
     "verify:determinism": "node scripts/verify-phase3.mjs",
     "verify": "npm run typecheck && npm run build:cli && npm test && npm run verify:determinism && npm run build:web"
   },

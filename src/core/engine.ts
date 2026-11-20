@@ -863,17 +863,19 @@ export class GameEngine {
       }
     }
 
-    // Dropped motes TTL & pickup delay
-    const liveMotes: MoteState[] = [];
-    for (const m of this.motes) {
+    // Dropped motes TTL & pickup delay (in-place compaction only when a mote expires)
+    let expiredAny = false;
+    for (let i = 0; i < this.motes.length; i++) {
+      const m = this.motes[i];
       if (m.pickup_delay_ticks > 0) m.pickup_delay_ticks -= 1;
       if (m.kind === 'dropped' && m.ttl_ticks !== null) {
         m.ttl_ticks -= 1;
-        if (m.ttl_ticks <= 0) continue;
+        if (m.ttl_ticks <= 0) expiredAny = true;
       }
-      liveMotes.push(m);
     }
-    this.motes = liveMotes;
+    if (expiredAny) {
+      this.motes = this.motes.filter((m) => !(m.kind === 'dropped' && m.ttl_ticks !== null && m.ttl_ticks <= 0));
+    }
 
     // Charm respawn timers
     for (const c of this.charms) {
@@ -886,29 +888,40 @@ export class GameEngine {
     }
 
     // Lantern fuel decay (1/60 per tick) + draining shades (5/60 per tick each, stacked)
-    const drainingShades = [...this.shades]
-      .filter((s) => s.state === 'drain' && s.target_lantern_id !== null)
-      .sort((a, b) => cmpId(a.id, b.id));
+    let hasDraining = false;
+    for (let i = 0; i < this.shades.length; i++) {
+      if (this.shades[i].state === 'drain' && this.shades[i].target_lantern_id !== null) {
+        hasDraining = true;
+        break;
+      }
+    }
+    const drainingShades = hasDraining
+      ? this.shades
+          .filter((s) => s.state === 'drain' && s.target_lantern_id !== null)
+          .sort((a, b) => cmpId(a.id, b.id))
+      : null;
 
     for (const lantern of this.lanterns) {
       if (!lantern.lit) continue;
       lantern.fuel_60ths -= FUEL_DECAY_PER_TICK_60THS;
-      for (const shade of drainingShades) {
-        if (
-          shade.target_lantern_id === lantern.id &&
-          lantern.fuel_60ths < FUEL_LOW_THRESHOLD_60THS &&
-          distXZ(shade.pos, lantern.pos) <= SHADE_DRAIN_RADIUS
-        ) {
-          lantern.fuel_60ths -= FUEL_DRAIN_PER_TICK_60THS;
-          shade.drain_ticks += 1;
-          if (shade.drain_ticks % FUEL_DRAIN_EVENT_INTERVAL_TICKS === 0) {
-            events.push(
-              this.makeEvent(nextTick, 'fuel_drain', {
-                lantern_id: lantern.id,
-                shade_id: shade.id,
-                fuel: round1(Math.max(0, lantern.fuel_60ths) / FUEL_SCALE),
-              })
-            );
+      if (drainingShades) {
+        for (const shade of drainingShades) {
+          if (
+            shade.target_lantern_id === lantern.id &&
+            lantern.fuel_60ths < FUEL_LOW_THRESHOLD_60THS &&
+            distXZ(shade.pos, lantern.pos) <= SHADE_DRAIN_RADIUS
+          ) {
+            lantern.fuel_60ths -= FUEL_DRAIN_PER_TICK_60THS;
+            shade.drain_ticks += 1;
+            if (shade.drain_ticks % FUEL_DRAIN_EVENT_INTERVAL_TICKS === 0) {
+              events.push(
+                this.makeEvent(nextTick, 'fuel_drain', {
+                  lantern_id: lantern.id,
+                  shade_id: shade.id,
+                  fuel: round1(Math.max(0, lantern.fuel_60ths) / FUEL_SCALE),
+                })
+              );
+            }
           }
         }
       }
